@@ -296,12 +296,14 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
       <h2>Shopping list</h2>
       <div class="form-row">
         <input id="shopText" placeholder="Add an item, e.g. 2 L milk" required maxlength="120" style="flex:3 1 220px">
-        <select id="shopCat" aria-label="Aisle"></select>
+        <input id="shopPlace" list="shopPlaces" placeholder="Shop, e.g. Woolworths" maxlength="40" autocomplete="off" aria-label="Where to buy it" style="flex:2 1 160px">
+        <datalist id="shopPlaces"></datalist>
         <button class="btn" type="submit">Add</button>
       </div>
     </form>
     <div class="card">
       <div class="card-head"><h3 id="shopCount">Items</h3><button class="btn ghost small" id="clearDone" type="button">Clear ticked items</button></div>
+      <div class="seg small-seg" id="shopFilter" hidden></div>
       <div id="shopList" class="grid2" style="gap:10px 24px"></div>
     </div>
   </section>
@@ -687,19 +689,31 @@ $('#evForm').addEventListener('submit', async e => {
 document.addEventListener('click', e => { const b=e.target.closest('[data-del-ev]'); if(b) save(()=>db.doc('events/'+b.dataset.delEv).delete()); });
 
 /* ---------- SHOPPING ---------- */
-$('#shopCat').innerHTML = AISLES.map(a=>`<option>${esc(a)}</option>`).join('');
+const SHOPS = ['Woolworths','Pick n Pay','Checkers','Spar','Dis-Chem','Clicks','Pet Science','Builders','Biltong shop'];
+const ANY_SHOP = 'Any shop';
+let shopFilter = 'all';
+const shopOf = i => (i.place||'').trim() || ANY_SHOP;
 function renderShopping(){
   const items = [...S.shopping].sort((a,b)=>(a.done-b.done) || (a.at||0)-(b.at||0));
   const left = items.filter(i=>!i.done).length;
   $('#shopCount').textContent = `${left} to buy${items.length-left ? `, ${items.length-left} ticked` : ''}`;
+  const used = [...new Set(items.map(shopOf))].sort((a,b)=> a===ANY_SHOP ? 1 : b===ANY_SHOP ? -1 : a.localeCompare(b));
+  const known = [...new Set([...S.shopping.map(i=>(i.place||'').trim()).filter(Boolean), ...SHOPS])];
+  $('#shopPlaces').innerHTML = known.map(x=>`<option value="${esc(x)}"></option>`).join('');
+  if(shopFilter!=='all' && !used.includes(shopFilter)) shopFilter='all';
+  const f = $('#shopFilter');
+  f.hidden = used.length < 2;
+  f.innerHTML = [`<button type="button" data-shop="all" aria-pressed="${shopFilter==='all'}">All shops</button>`, ...used.map(x=>`<button type="button" data-shop="${esc(x)}" aria-pressed="${shopFilter===x}">${esc(x)} <span class="muted">${items.filter(i=>shopOf(i)===x && !i.done).length}</span></button>`)].join('');
   if(!items.length){ $('#shopList').innerHTML = '<div class="empty">The list is empty. Add items above, or send ingredients from the Meals tab.</div>'; return; }
-  const groups = AISLES.map(a => [a, items.filter(i => (i.cat||'Other')===a)]).filter(g=>g[1].length);
-  $('#shopList').innerHTML = groups.map(([a,list]) => `<div class="aisle"><h3>${esc(a)}</h3><ul class="list">${list.map(i => `<li class="${i.done?'done':''}"><button type="button" class="check ${i.done?'on':''}" data-tick="${esc(i.id)}" aria-pressed="${!!i.done}" aria-label="Tick ${esc(i.text)}">${i.done?'&#10003;':''}</button><span class="grow">${esc(i.text)}</span><span class="small muted">${i.by && i.by!==S.me ? esc(nameOf(i.by)) : ''}</span><button type="button" class="iconbtn" data-del-shop="${esc(i.id)}" aria-label="Remove ${esc(i.text)}">&times;</button></li>`).join('')}</ul></div>`).join('');
+  const groups = used.filter(x => shopFilter==='all' || x===shopFilter).map(x => [x, items.filter(i => shopOf(i)===x)]);
+  $('#shopList').innerHTML = groups.map(([x,list]) => `<div class="aisle"><h3>${esc(x)}</h3><ul class="list">${list.map(i => `<li class="${i.done?'done':''}"><button type="button" class="check ${i.done?'on':''}" data-tick="${esc(i.id)}" aria-pressed="${!!i.done}" aria-label="Tick ${esc(i.text)}">${i.done?'&#10003;':''}</button><span class="grow">${esc(i.text)}</span><span class="small muted">${i.by && i.by!==S.me ? esc(nameOf(i.by)) : ''}</span><button type="button" class="iconbtn" data-del-shop="${esc(i.id)}" aria-label="Remove ${esc(i.text)}">&times;</button></li>`).join('')}</ul></div>`).join('');
 }
+$('#shopFilter').addEventListener('click', e => { const b=e.target.closest('[data-shop]'); if(b){ shopFilter=b.dataset.shop; renderShopping(); } });
 $('#shopForm').addEventListener('submit', async e => {
   e.preventDefault();
   const text = $('#shopText').value.trim(); if(!text) return;
-  if(await save(() => db.collection('shopping').add({text, cat:$('#shopCat').value, done:false, by:S.me, at:Date.now()}))){ $('#shopText').value=''; $('#shopText').focus(); }
+  const place = $('#shopPlace').value.trim();
+  if(await save(() => db.collection('shopping').add({text, place, done:false, by:S.me, at:Date.now()}))){ $('#shopText').value=''; $('#shopText').focus(); }
 });
 $('#shopList').addEventListener('click', e => {
   const t=e.target.closest('[data-tick]'); if(t){ const it=S.shopping.find(i=>i.id===t.dataset.tick); if(it) save(()=>db.doc('shopping/'+it.id).update({done:!it.done})); return; }
