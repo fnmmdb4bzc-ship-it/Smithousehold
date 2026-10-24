@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#D9E1D0">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Smit Home">
+<meta name="mobile-web-app-capable" content="yes">
 <title>The Smit Household</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -207,6 +213,9 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 .ytable thead th:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
 .ytable .cur{background:var(--olive-soft)}
 .ytable tfoot td,.ytable tfoot th{font-weight:700;border-top:2px solid var(--line)}
+.captext{color:var(--ink)}
+.capform{margin-top:2px}
+.capform input{padding:7px 10px;font-size:14px}
 </style>
 </head>
 <body>
@@ -214,7 +223,7 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 <header class="top"><div class="wrap row">
   <div class="hero"><img class="hero-photo" src="us.jpg" alt="The two of you, smiling together at dinner"><div><div class="eyebrow" id="greet">Welcome home</div><h1>The Smit Household</h1></div></div>
   <div class="datebox"><strong id="todayLong"></strong><span id="dayOfYear"></span>
-    <div class="who" id="whoBox" hidden style="justify-content:flex-end;margin-top:6px"><img id="meImg" alt=""><span id="meName"></span><button class="btn ghost small" id="signOut" type="button">Sign out</button></div>
+    <div class="who" id="whoBox" hidden style="justify-content:flex-end;margin-top:6px"><img id="meImg" alt=""><span id="meName"></span><button class="btn ghost small" id="bellBtn" type="button" data-go="home">Notifications</button><button class="btn ghost small" id="signOut" type="button">Sign out</button></div>
   </div>
 </div></header>
 
@@ -261,6 +270,11 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
       <div class="card"><h2>Coming up</h2><ul class="list" id="comingUp"></ul></div>
       <div class="card"><div class="card-head"><h2>Today's photos</h2><button class="btn ghost small" data-go="photos" type="button">Open album</button></div><div class="slots" id="homePhotos"></div></div>
       <div class="card"><h2>Due soon</h2><ul class="list" id="homeDue"></ul><div class="small muted" id="homeShop"></div></div>
+    </div>
+    <div class="card" id="pushCard">
+      <div class="card-head"><h2>Phone notifications</h2><span class="chip" id="pushState">Checking</span></div>
+      <p class="small muted" id="pushText" style="margin:0">Get a notification on this phone whenever the other person changes something.</p>
+      <div class="form-row" style="justify-content:flex-start"><button class="btn" id="pushOn" type="button" style="flex:0 0 auto">Turn on for this phone</button><button class="btn ghost" id="pushTest" type="button" style="flex:0 0 auto" hidden>Send me a test</button><button class="btn ghost" id="pushOff" type="button" style="flex:0 0 auto" hidden>Turn off for this phone</button></div>
     </div>
   </section>
 
@@ -395,7 +409,7 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
       <div class="slots" id="phSlots"></div>
       <form class="form-row" id="phForm">
         <input id="phDate" type="date" aria-label="Photo date" style="flex:0 1 170px">
-        <input id="phCaption" placeholder="Caption (optional)" maxlength="200" style="flex:2 1 200px">
+        <input id="phCaption" placeholder="Caption (type before choosing, or add it after)" maxlength="200" style="flex:2 1 200px">
         <label class="btn clay" id="phPick">Choose photo<input type="file" id="phFile" accept="image/*"></label>
       </form>
       <div class="small muted" id="phStatus"></div>
@@ -609,7 +623,7 @@ function renderHome(){
   ].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6);
   $('#comingUp').innerHTML = up.length ? up.map(u => `<li><span class="chip tnum">${esc(fmtWd(u.date))}</span><span class="grow">${u.html}</span></li>`).join('') : '<li class="empty">Nothing coming up yet. Add plans on the Calendar tab.</li>';
 
-  $('#homePhotos').innerHTML = slotHtml(TODAY, S.photosToday, true);
+  if(!$('#homePhotos').contains(document.activeElement)) $('#homePhotos').innerHTML = slotHtml(TODAY, S.photosToday, true);
 
   const thisMonth = ym(parse(TODAY)), mDate = parse(TODAY);
   const due = [
@@ -904,7 +918,10 @@ function slotHtml(date, list, compact){
   return [S.me, partnerId()].map((id, idx) => {
     const p = id && findPhoto(list, date, id);
     const label = idx===0 ? 'You' : partnerName();
-    if(p) return `<div class="slot"><button type="button" class="ph" data-open-day="${esc(date)}" aria-label="Open ${esc(label)}'s photo"><img src="${p.thumb}" alt="${esc(p.caption || label+"'s photo")}"></button><div class="small"><strong>${esc(label)}</strong>${p.caption ? ` <span class="muted">${esc(p.caption)}</span>` : ''}</div></div>`;
+    if(p){
+      const capForm = idx===0 ? `<form class="form-row capform" data-capid="${esc(p.id)}"><input name="cap" id="cap-${esc(p.id)}-${compact?'h':'p'}" value="${esc(p.caption||'')}" placeholder="Add a caption" maxlength="200" aria-label="Caption for your photo" style="flex:1 1 120px"><button class="btn ghost small" type="submit" style="flex:0 0 auto">${p.caption?'Update':'Save'}</button></form>` : '';
+      return `<div class="slot"><button type="button" class="ph" data-open-day="${esc(date)}" aria-label="Open ${esc(label)}'s photo"><img src="${p.thumb}" alt="${esc(p.caption || label+"'s photo")}"></button><div class="small"><strong>${esc(label)}</strong>${p.caption ? ` <span class="captext">${esc(p.caption)}</span>` : ''}</div>${capForm}</div>`;
+    }
     const msg = idx===0 ? (compact ? 'No photo from you yet today.' : 'Your photo for this day goes here. Use Choose photo below.') : `Waiting for ${esc(label)}'s photo.`;
     return `<div class="slot"><div class="ph wait">${msg}</div><div class="small"><strong>${esc(label)}</strong></div></div>`;
   }).join('');
@@ -923,7 +940,7 @@ function renderPhotos(){
   $('#phBar').style.width = (n/len*100).toFixed(1)+'%';
   const pd = $('#phDate'); if(!pd.value) pd.value = TODAY; pd.max = TODAY;
   const sel = pd.value || TODAY;
-  $('#phSlots').innerHTML = slotHtml(sel, sel===TODAY ? S.photosToday : S.photosMonth, false);
+  if(!$('#phSlots').contains(document.activeElement)) $('#phSlots').innerHTML = slotHtml(sel, sel===TODAY ? S.photosToday : S.photosMonth, false);
   const m = ui.alMonth;
   $('#alTitle').textContent = m.toLocaleDateString('en-ZA',{month:'long',year:'numeric'});
   const first = (m.getDay()+6)%7, dim = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
@@ -977,6 +994,15 @@ $('#phFile').addEventListener('change', async e => {
     if(ok){ $('#phCaption').value=''; toast('Photo added to the album'); }
   }catch(err){ console.warn(err); toast('That file could not be opened as a photo. Try a JPG or PNG.'); }
   $('#phStatus').textContent = '';
+});
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('form[data-capid]'); if(!f) return;
+  e.preventDefault();
+  const caption = f.querySelector('input[name=cap]').value.trim();
+  const btn = f.querySelector('button'); btn.disabled = true;
+  const ok = await save(() => db.doc('photos/'+f.dataset.capid).update({caption}));
+  btn.disabled = false; if(document.activeElement) document.activeElement.blur();
+  if(ok){ toast(caption ? 'Caption saved' : 'Caption removed'); schedule(); }
 });
 async function openDay(date){
   const list = date===TODAY ? S.photosToday : S.photosMonth;
@@ -1201,7 +1227,8 @@ document.addEventListener('visibilitychange', () => {
 
 /* ---------- small document store on top of one Supabase table ("docs") ----------
    Each record is (collection, id, data). Realtime updates come from Supabase Realtime. */
-function makeDb(sb){
+function makeDb(sb, onChange){
+  const hook = (col,id,action,data,patch) => { try{ onChange && onChange(col,id,action,data,patch); }catch(e){ console.warn(e); } };
   const watchers = new Map();
   const pending = new Set(); let timer=null;
   const clone = o => o==null ? o : JSON.parse(JSON.stringify(o));
@@ -1219,9 +1246,9 @@ function makeDb(sb){
     return {
       id, path: col+'/'+id,
       get: async () => snapDoc(id, await readOne(col, id)),
-      set: async (d, opts) => { let data = clone(d); if(opts && opts.merge){ const cur = await readOne(col,id); if(cur) data = deepMerge(cur, data); } await write(col, id, data); },
-      update: async d => { const cur = await readOne(col,id); if(!cur){ const e=new Error('Not found'); e.code='not-found'; throw e; } await write(col, id, Object.assign(cur, clone(d))); },
-      delete: async () => { const {error} = await sb.from('docs').delete().eq('collection',col).eq('id',id); if(error) throw fail(error); bump(col); },
+      set: async (d, opts) => { let data = clone(d); if(opts && opts.merge){ const cur = await readOne(col,id); if(cur) data = deepMerge(cur, data); } await write(col, id, data); hook(col,id,'set',data); },
+      update: async d => { const cur = await readOne(col,id); if(!cur){ const e=new Error('Not found'); e.code='not-found'; throw e; } const merged = Object.assign(cur, clone(d)); await write(col, id, merged); hook(col,id,'update',merged,d); },
+      delete: async () => { const {error} = await sb.from('docs').delete().eq('collection',col).eq('id',id); if(error) throw fail(error); bump(col); hook(col,id,'delete',null); },
       onSnapshot(next, onError){ let alive=true; const run=()=>this.get().then(s=>alive&&next(s)).catch(e=>alive&&onError&&onError(e)); const un=watch(col, run); run(); return ()=>{ alive=false; un(); }; }
     };
   }
@@ -1263,6 +1290,114 @@ function makeDb(sb){
   };
 }
 
+/* ---------- phone notifications ---------- */
+const VAPID_PUBLIC = 'BLd8MtrDzhMf7N7h5XOv0zsteiyv8tgX3Kvv7Ml1I6Fmx0ig-ljumnqobTwX2dLoF49-P-Em2MqZvJVI4e_lT3Y';
+let accessToken = null, pendingChanges = [], changeTimer = null;
+const trunc = (t,n) => { t = String(t||'').trim(); return t.length>n ? t.slice(0,n-1)+'…' : t; };
+const TAB_OF = {messages:'home', photos:'photos', events:'calendar', countdowns:'notes', shopping:'shopping', meals:'meals', spending:'spending', bills:'spending', cats:'cats', jar:'jar', contacts:'notes', board:'notes'};
+function queueChange(col, id, action, data, patch){
+  if(!S.me || col==='members' || (col==='board' && id==='photoDays')) return;
+  pendingChanges.push({col, id, action, data, patch});
+  clearTimeout(changeTimer); changeTimer = setTimeout(flushChanges, 5000);
+}
+function describe(col, items){
+  const sets = items.filter(x=>x.action==='set'), ups = items.filter(x=>x.action==='update'), dels = items.filter(x=>x.action==='delete');
+  const names = (xs,k) => { const n = xs.map(x=>x.data && x.data[k]).filter(Boolean).map(v=>trunc(v,30)); return n.length>3 ? n.slice(0,3).join(', ')+` and ${n.length-3} more` : n.join(', '); };
+  const out = [];
+  switch(col){
+    case 'messages': if(sets.length) out.push(`left you a morning message: "${trunc(sets[sets.length-1].data.text,110)}"`); break;
+    case 'photos': {
+      const added = sets[sets.length-1], capped = ups.filter(x=>x.patch && 'caption' in x.patch).pop();
+      if(added) out.push(`added a photo of the day${added.data.caption?`: "${trunc(added.data.caption,80)}"`:''}`);
+      else if(capped && capped.data.caption) out.push(`added a caption to their photo: "${trunc(capped.data.caption,80)}"`);
+      break; }
+    case 'events': if(sets.length) out.push(`added ${names(sets,'title')} to the calendar${sets.length===1&&sets[0].data.date?` (${fmtShort(sets[0].data.date)})`:''}`); if(dels.length) out.push(`removed ${dels.length===1?'a plan':dels.length+' plans'} from the calendar`); break;
+    case 'countdowns': if(sets.length) out.push(`added a countdown: ${names(sets,'title')}`); if(dels.length) out.push('removed a countdown'); break;
+    case 'shopping': {
+      if(sets.length) out.push(`added ${names(sets,'text')} to the shopping list`);
+      const ticked = ups.filter(x=>x.data.done).length; if(ticked) out.push(`ticked off ${ticked} shopping item${ticked===1?'':'s'}`);
+      if(dels.length) out.push(`removed ${dels.length} item${dels.length===1?'':'s'} from the shopping list`);
+      break; }
+    case 'meals': out.push('updated the meal plan'); break;
+    case 'spending': {
+      if(sets.length===1){ const d=sets[0].data; out.push(`logged an expense: ${money(d.amount)} for ${d.cat}${d.note?` (${trunc(d.note,40)})`:''}`); }
+      else if(sets.length){ out.push(`logged ${sets.length} expenses (${money(sets.reduce((a,x)=>a+(x.data.amount||0),0))})`); }
+      if(dels.length) out.push(`removed ${dels.length===1?'an expense':dels.length+' expenses'}`);
+      break; }
+    case 'bills': if(sets.length) out.push(`added a bill: ${names(sets,'name')}`); if(ups.length) out.push(`marked ${names(ups,'name')} as paid`); if(dels.length) out.push('removed a bill'); break;
+    case 'cats': if(sets.length) out.push(`added ${names(sets,'name')} to The cats`); if(ups.length) out.push(`updated ${names(ups,'name')}'s details`); if(dels.length) out.push('removed a cat'); break;
+    case 'jar': if(sets.length) out.push(`put a date idea in the jar: ${names(sets,'text')}`); if(ups.some(x=>x.data.doneOn)) out.push('marked a date from the jar as done'); if(dels.length) out.push('removed a date idea'); break;
+    case 'contacts': if(sets.length) out.push(`added a contact: ${names(sets,'name')}`); if(dels.length) out.push('removed a contact'); break;
+    case 'board': if(items.some(x=>x.id==='notes')) out.push('updated the shared notes'); if(items.some(x=>x.id==='budgets')) out.push('updated the monthly budgets'); break;
+    default: out.push('made a change');
+  }
+  return out;
+}
+function flushChanges(){
+  clearTimeout(changeTimer); changeTimer = null;
+  if(!pendingChanges.length || !accessToken) return;
+  const items = pendingChanges; pendingChanges = [];
+  const order = [], by = {};
+  items.forEach(x => { if(!by[x.col]){ by[x.col]=[]; order.push(x.col); } by[x.col].push(x); });
+  let parts = []; order.forEach(c => parts.push(...describe(c, by[c])));
+  if(!parts.length) return;
+  const body = (parts.length>3 ? parts.slice(0,3).join('; ')+'; and more' : parts.join('; ')).replace(/^./, c=>c.toUpperCase());
+  fetch(`${SUPABASE_URL}/functions/v1/notify`, { method:'POST', keepalive:true,
+    headers:{ 'Authorization':'Bearer '+accessToken, 'apikey':SUPABASE_ANON_KEY, 'Content-Type':'application/json' },
+    body: JSON.stringify({ body, tab: TAB_OF[order[0]] || 'home' }) }).catch(e => console.warn('notify failed', e));
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState==='hidden') flushChanges(); });
+window.addEventListener('pagehide', flushChanges);
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+const isStandalone = () => window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+function b64ToBytes(b64){ const pad='='.repeat((4-b64.length%4)%4); const raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from(raw, c=>c.charCodeAt(0)); }
+let swReg = null;
+async function getReg(){ if(swReg) return swReg; swReg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready; return swReg; }
+async function renderPush(){
+  const st=$('#pushState'), tx=$('#pushText'), on=$('#pushOn'), test=$('#pushTest'), off=$('#pushOff');
+  const set = (chip, cls, text, showOn, showTestOff) => { st.textContent=chip; st.className='chip '+cls; tx.textContent=text; on.hidden=!showOn; test.hidden=!showTestOff; off.hidden=!showTestOff; };
+  if(!pushSupported()){
+    if(isIOS && !isStandalone()) return set('Needs Home Screen','honey','On iPhone, notifications only work from the Home Screen app. Tap the Share button, choose Add to Home Screen, then open The Smit Household from your Home Screen and turn notifications on there.', false, false);
+    return set('Not available','', 'This browser cannot show notifications. Try Chrome or Safari on your phone.', false, false);
+  }
+  if(Notification.permission==='denied') return set('Blocked','danger','Notifications are blocked for this app. Allow them in your phone settings (Notifications, then The Smit Household or your browser), then come back here.', false, false);
+  try{
+    const reg = await getReg(); const sub = await reg.pushManager.getSubscription();
+    if(sub) return set('On for this phone','olive', `You will be notified when ${partnerName()} changes something.`, false, true);
+  }catch(e){ console.warn(e); }
+  set('Off','', `Get a notification on this phone whenever ${partnerName()} changes something.`, true, false);
+}
+$('#pushOn').addEventListener('click', async () => {
+  const btn=$('#pushOn'); btn.disabled=true;
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm!=='granted'){ toast('Notifications were not allowed.'); return; }
+    const reg = await getReg();
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    const { error } = await sb.from('push_subscriptions').upsert({ endpoint:j.endpoint, user_id:S.me, p256dh:j.keys.p256dh, auth:j.keys.auth, user_agent:navigator.userAgent.slice(0,200) }, { onConflict:'endpoint' });
+    if(error) throw error;
+    toast('Notifications are on for this phone');
+    sendTest();
+  }catch(e){ console.warn(e); toast('Could not turn on notifications. Try again.'); }
+  finally{ btn.disabled=false; renderPush(); }
+});
+async function sendTest(){
+  const { data, error } = await sb.functions.invoke('notify', { body:{ test:true, body:'Notifications are working on this phone.' } });
+  if(error){ console.warn(error); toast('The test did not send. Try again in a moment.'); return; }
+  toast(data && data.sent ? 'Test sent. It should appear in a few seconds.' : 'No phone found to send to. Turn notifications on again.');
+}
+$('#pushTest').addEventListener('click', sendTest);
+$('#pushOff').addEventListener('click', async () => {
+  try{ const reg = await getReg(); const sub = await reg.pushManager.getSubscription();
+    if(sub){ await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+    toast('Notifications are off for this phone');
+  }catch(e){ console.warn(e); }
+  renderPush();
+});
+
 let currentUid = null;
 function boot(){
   renderHeader('');
@@ -1271,7 +1406,7 @@ function boot(){
     $('#signIn').hidden = true; return;
   }
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true } });
-  db = makeDb(sb);
+  db = makeDb(sb, queueChange);
   const back = location.origin + location.pathname;
   $('#signIn').onclick = async () => {
     $('#gateErr').textContent='';
@@ -1285,6 +1420,7 @@ function boot(){
   if(err) $('#gateErr').textContent = err.replace(/\+/g,' ');
 
   sb.auth.onAuthStateChange((event, session) => {
+    accessToken = session ? session.access_token : null;
     const u = session && session.user;
     const uid = u ? u.id : null;
     if(uid === currentUid) return;          // ignore token refreshes
@@ -1306,9 +1442,11 @@ async function handleUser(u){
   $('#whoBox').hidden = false; $('#meName').textContent = name || u.email; if(photo){ $('#meImg').src = photo; $('#meImg').hidden=false; } else $('#meImg').hidden=true;
   renderHeader((name||'').split(' ')[0]);
   startData();
+  renderPush();
   const start = (location.hash||'').slice(1);
   showTab(['home','calendar','shopping','meals','spending','photos','cats','jar','notes'].includes(start) ? start : 'home');
 }
+if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if(e.data && e.data.tab) showTab(e.data.tab); });
 boot();
 })();
 </script>
