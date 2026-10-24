@@ -191,6 +191,22 @@ html{background:var(--bg)}
 nav.tabs{background:color-mix(in srgb,var(--bg) 72%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 .card{box-shadow:0 1px 2px rgba(40,50,30,.06)}
+.field{display:grid;gap:6px}
+.flbl{font-size:13px;font-weight:600;color:var(--muted)}
+.seg{display:inline-flex;gap:4px;background:var(--sunk);padding:4px;border-radius:12px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--ink);font:600 15px var(--body);padding:9px 18px;border-radius:9px;cursor:pointer}
+.seg button[aria-checked="true"],.seg button[aria-pressed="true"]{background:var(--olive);color:var(--on-accent)}
+.small-seg button{font-size:13px;padding:6px 12px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.split>div{background:var(--sunk);border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.tablewrap{overflow-x:auto;margin:0 -4px}
+.ytable{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;min-width:900px;width:100%}
+.ytable th,.ytable td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.ytable thead th{color:var(--muted);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.ytable tbody th,.ytable tfoot th{text-align:left;font-weight:600;position:sticky;left:0;background:var(--surface)}
+.ytable thead th:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+.ytable .cur{background:var(--olive-soft)}
+.ytable tfoot td,.ytable tfoot th{font-weight:700;border-top:2px solid var(--line)}
 </style>
 </head>
 <body>
@@ -311,50 +327,62 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 
   <!-- SPENDING -->
   <section class="panel" data-panel="spending" hidden>
-    <div class="card">
-      <div class="card-head">
-        <h2 id="spTitle">This month</h2>
-        <div class="form-row" style="flex:0 0 auto"><button class="btn ghost small" id="spPrev" type="button">Prev</button><button class="btn ghost small" id="spNow" type="button">This month</button><button class="btn ghost small" id="spNext" type="button">Next</button></div>
-      </div>
-      <div class="card-head" style="align-items:flex-end">
-        <div><div class="small muted">Spent</div><div class="big money" id="spTotal">R 0,00</div></div>
-        <div style="text-align:right"><div class="small muted">Budget left</div><div class="big money" id="spLeft" style="font-size:24px">Not set</div></div>
-      </div>
-      <div class="grid2" id="spCats" style="gap:12px 24px"></div>
-    </div>
     <div class="grid2">
       <form class="card" id="spForm">
         <h2>Log spending</h2>
-        <div class="form-row">
-          <input id="spAmount" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="Amount in R" required aria-label="Amount in rand">
-          <select id="spCat" aria-label="Category"></select>
+        <div class="field"><span class="flbl" id="whoLbl">Whose bank account?</span>
+          <div class="seg" id="spWho" role="radiogroup" aria-labelledby="whoLbl">
+            <button type="button" role="radio" data-acct="Kaylee" id="acct-k">Kaylee</button>
+            <button type="button" role="radio" data-acct="Debby" id="acct-d">Debby</button>
+          </div>
         </div>
-        <div class="form-row">
-          <input id="spDate" type="date" required aria-label="Date">
-          <select id="spWho" aria-label="Who paid"></select>
-        </div>
-        <input id="spNote" placeholder="What was it? e.g. Checkers weekly shop" maxlength="120">
-        <div><button class="btn" type="submit">Add</button></div>
+        <label class="field"><span class="flbl">Budget month</span><select id="spBudgetMonth"></select></label>
+        <label class="field"><span class="flbl">Category</span><select id="spCat"></select></label>
+        <label class="field"><span class="flbl">Amount (R)</span><input id="spAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 162,36" required></label>
+        <label class="field"><span class="flbl">Notes</span><input id="spNote" placeholder="e.g. WW groceries" maxlength="120" autocomplete="off"></label>
+        <div><button class="btn" type="submit">Log it</button></div>
       </form>
+      <div class="card">
+        <div class="card-head">
+          <h2 id="spTitle">This month</h2>
+          <div class="form-row" style="flex:0 0 auto"><button class="btn ghost small" id="spPrev" type="button">Prev</button><button class="btn ghost small" id="spNow" type="button">This month</button><button class="btn ghost small" id="spNext" type="button">Next</button></div>
+        </div>
+        <div class="card-head" style="align-items:flex-end">
+          <div><div class="small muted">Spent this budget month</div><div class="big money" id="spTotal">R 0,00</div></div>
+          <div style="text-align:right"><div class="small muted">Budget left</div><div class="big money" id="spLeft" style="font-size:24px">Not set</div></div>
+        </div>
+        <div class="split" id="spSplit"></div>
+        <div id="spCats" style="display:grid;gap:12px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3 id="spListTitle">Entries this month</h3>
+        <div class="seg small-seg" id="spFilter"><button type="button" data-f="all" aria-pressed="true">Both</button><button type="button" data-f="Kaylee">Kaylee</button><button type="button" data-f="Debby">Debby</button></div>
+      </div>
+      <ul class="list" id="spList"></ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2 id="yearTitle">Year at a glance</h2><span class="small muted">Variable spending per budget month</span></div>
+      <div class="tablewrap"><table class="ytable" id="yearTable"></table></div>
+    </div>
+    <div class="grid2">
       <div class="card">
         <div class="card-head"><h2>Bills and debit orders</h2><span class="small muted" id="billTotal"></span></div>
         <ul class="list" id="billList"></ul>
         <form class="form-row" id="billForm">
           <input id="billName" placeholder="e.g. Home insurance" required maxlength="60" style="flex:2 1 160px">
-          <input id="billAmt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Amount R" required aria-label="Amount in rand">
+          <input id="billAmt" type="text" inputmode="decimal" placeholder="Amount R" required aria-label="Amount in rand">
           <input id="billDay" type="number" min="1" max="31" placeholder="Day" required aria-label="Day of the month it goes off" style="flex:0 1 80px">
-          <select id="billCat" aria-label="Category"></select>
           <button class="btn" type="submit">Add</button>
         </form>
       </div>
+      <form class="card" id="budgetForm">
+        <h2>Monthly budgets</h2>
+        <p class="small muted" style="margin:0">Leave a box empty for no budget in that category. The same budgets apply every month.</p>
+        <div class="budget-edit" id="budgetEdit"></div>
+        <div><button class="btn" type="submit">Save budgets</button></div>
+      </form>
     </div>
-    <div class="card"><h3>Spending this month</h3><ul class="list" id="spList"></ul></div>
-    <form class="card" id="budgetForm">
-      <h2>Monthly budgets</h2>
-      <p class="small muted" style="margin:0">Leave a box empty for no budget in that category. The same budgets apply every month.</p>
-      <div class="budget-edit" id="budgetEdit"></div>
-      <div><button class="btn" type="submit">Save budgets</button></div>
-    </form>
   </section>
 
   <!-- PHOTOS -->
@@ -477,7 +505,7 @@ const money = c => ZAR.format((c||0)/100);
 const toCents = v => Math.round(parseFloat(String(v).replace(',','.'))*100);
 let TODAY = ymd(new Date());
 const AISLES = ['Fruit and veg','Meat and fish','Dairy and eggs','Bakery','Pantry','Frozen','Drinks','Household','Toiletries','Cats','Other'];
-const SPEND = ['Groceries','Eating out','Fuel and transport','Home and utilities','Insurance','Cats','Health','Clothing','Entertainment','Gifts','Savings','Other'];
+const SPEND = ['Groceries','Coffee Takeaway','Food Takeaway','Dining Out','Fuel','Clothing','Data/Airtime','Pharmacy & Medical','Parking & Car Wash','Home & Hardware','Pets - Medical','Pets - Food','Pets - General','NILD Supplies','Birthdays & Gifts','Electricity','Personal Care','Online Shopping','Anthropic Credits','School Supplies','Other'];
 const CARE = [['flea','Flea treatment'],['deworm','Deworming'],['vaccine','Vaccination'],['vet','Next vet visit']];
 
 const S = { me:null, members:[], events:[], shopping:[], meals:{}, photosToday:[], photosMonth:[], photoDays:{}, messages:[], cats:[], jar:[], countdowns:[], contacts:[], notes:null, spend:[], bills:[], budgets:{} };
@@ -740,84 +768,119 @@ $('#ingForm').addEventListener('submit', async e => {
   if(await save(()=>batch.commit())){ $('#ingText').value=''; toast(`Added ${lines.length} item${lines.length===1?'':'s'} to the shopping list`); }
 });
 
-/* ---------- SPENDING ---------- */
+/* ---------- SPENDING (same five questions as the household Google Form) ---------- */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const monthLabel = k => { const [y,m] = k.split('-').map(Number); return `${MONTHS[m-1]} ${y}`; };
+function parseAmount(v){
+  let s = String(v||'').trim().replace(/^r\s*/i,'').replace(/\s/g,'');
+  if(/,\d{1,2}$/.test(s)) s = s.replace(/\./g,'').replace(',','.'); else s = s.replace(/,/g,'');
+  const n = parseFloat(s); return isFinite(n) ? Math.round(n*100) : NaN;
+}
+function myAccount(){ const e = ((auth.currentUser||{}).email||'').toLowerCase(); return e.startsWith('kaylee') ? 'Kaylee' : e.startsWith('deborah') ? 'Debby' : ''; }
+let chosenAcct = null;
+function setAcct(a){ chosenAcct = a; $$('#spWho [data-acct]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.acct===a))); }
+$('#spWho').addEventListener('click', e => { const b=e.target.closest('[data-acct]'); if(b) setAcct(b.dataset.acct); });
 $('#spCat').innerHTML = SPEND.map(c=>`<option>${esc(c)}</option>`).join('');
-$('#billCat').innerHTML = SPEND.map(c=>`<option ${c==='Home and utilities'?'selected':''}>${esc(c)}</option>`).join('');
+function fillBudgetMonths(){
+  const sel = $('#spBudgetMonth'), cur = sel.value, t = parse(TODAY); let html='';
+  for(let i=3;i>=-12;i--){ const d=new Date(t.getFullYear(), t.getMonth()+i, 1), k=ym(d); html += `<option value="${k}">${esc(monthLabel(k))}</option>`; }
+  sel.innerHTML = html; sel.value = cur || ym(t);
+}
+let spFilter = 'all';
+$('#spFilter').addEventListener('click', e => { const b=e.target.closest('[data-f]'); if(!b) return; spFilter=b.dataset.f; $$('#spFilter [data-f]').forEach(x=>x.setAttribute('aria-pressed', String(x===b))); renderSpending(); });
 function subSpend(){
   if(unsubs.spend) unsubs.spend();
-  unsubs.spend = db.collection('spending').where('month','==',ym(ui.spMonth)).onSnapshot(s => { S.spend = rows(s); schedule(); }, onErr);
+  const y = ui.spMonth.getFullYear();
+  unsubs.spend = db.collection('spending').where('month','>=',`${y}-01`).where('month','<=',`${y}-12`).onSnapshot(s => { S.spend = rows(s); schedule(); }, onErr);
 }
 function renderSpending(){
-  const month = ym(ui.spMonth);
-  $('#spTitle').textContent = ui.spMonth.toLocaleDateString('en-ZA',{month:'long',year:'numeric'});
-  const total = S.spend.reduce((a,s)=>a+(s.amount||0),0);
+  if(!chosenAcct) setAcct(myAccount() || 'Kaylee');
+  if(!$('#spBudgetMonth').options.length) fillBudgetMonths();
+  const month = ym(ui.spMonth), yr = ui.spMonth.getFullYear();
+  $('#spTitle').textContent = monthLabel(month);
+  const inMonth = S.spend.filter(s => s.month===month);
+  const total = inMonth.reduce((a,s)=>a+(s.amount||0),0);
   $('#spTotal').textContent = money(total);
   const budgetTotal = SPEND.reduce((a,c)=>a+(S.budgets[c]||0),0);
   const spLeft = $('#spLeft');
   spLeft.textContent = budgetTotal ? money(budgetTotal-total) : 'Not set';
   spLeft.style.color = budgetTotal && total>budgetTotal ? 'var(--danger)' : '';
-  const byCat = {}; S.spend.forEach(s => byCat[s.cat||'Other'] = (byCat[s.cat||'Other']||0) + (s.amount||0));
-  const cats = SPEND.filter(c => byCat[c] || S.budgets[c]);
+  const per = a => inMonth.filter(s=>s.account===a).reduce((x,s)=>x+(s.amount||0),0);
+  $('#spSplit').innerHTML = ['Kaylee','Debby'].map(a=>`<div><span class="small muted">${a}'s account</span><strong class="money">${money(per(a))}</strong></div>`).join('');
+  const byCat = {}; inMonth.forEach(s => byCat[s.cat||'Other'] = (byCat[s.cat||'Other']||0) + (s.amount||0));
+  const allCats = [...SPEND, ...Object.keys(byCat).filter(c=>!SPEND.includes(c))];
+  const cats = allCats.filter(c => byCat[c] || S.budgets[c]).sort((a,b)=>(byCat[b]||0)-(byCat[a]||0));
   $('#spCats').innerHTML = cats.length ? cats.map(c => {
     const spent = byCat[c]||0, b = S.budgets[c]||0, pct = b ? Math.min(100, spent/b*100) : 0;
     const cls = !b ? '' : spent>b ? 'over' : spent>b*0.85 ? 'warn' : '';
     return `<div class="budget-row"><div class="top"><span>${esc(c)}</span><span class="money">${money(spent)}${b?` <span class="muted">of ${money(b)}</span>`:''}</span></div>${b?`<div class="bar"><span class="${cls}" style="width:${pct.toFixed(1)}%"></span></div>`:''}</div>`;
-  }).join('') : '<div class="empty">Nothing logged this month yet. Add your first spend below, and set budgets at the bottom of this tab.</div>';
-  const list = [...S.spend].sort((a,b)=>b.date.localeCompare(a.date) || (b.at||0)-(a.at||0));
-  $('#spList').innerHTML = list.length ? list.map(s=>`<li><span class="chip tnum">${esc(fmtShort(s.date))}</span><span class="grow">${esc(s.note||s.cat)} <span class="chip">${esc(s.cat)}</span>${s.who?` <span class="small muted">${esc(s.who==='joint'?'Joint':nameOf(s.who))}</span>`:''}</span><span class="money">${money(s.amount)}</span><button type="button" class="iconbtn" data-del-sp="${esc(s.id)}" aria-label="Remove">&times;</button></li>`).join('') : '<li class="empty">No spending logged for this month.</li>';
+  }).join('') : '<div class="empty">Nothing logged for this budget month yet.</div>';
+  $('#spListTitle').textContent = `Entries for ${monthLabel(month)}`;
+  const list = inMonth.filter(s => spFilter==='all' || s.account===spFilter).sort((a,b)=>(b.at||0)-(a.at||0));
+  $('#spList').innerHTML = list.length ? list.map(s=>`<li><span class="chip">${esc(s.account||'')}</span><span class="grow">${esc(s.note||s.cat)} <span class="chip">${esc(s.cat)}</span>${s.date?` <span class="small muted">${esc(fmtShort(s.date))}</span>`:''}</span><span class="money">${money(s.amount)}</span><button type="button" class="iconbtn" data-del-sp="${esc(s.id)}" aria-label="Remove">&times;</button></li>`).join('') : '<li class="empty">No entries yet.</li>';
+  // year at a glance
+  $('#yearTitle').textContent = `Year at a glance, ${yr}`;
+  const grid = {}, colTot = Array(12).fill(0);
+  S.spend.forEach(s => { const m = parseInt((s.month||'').slice(5),10)-1; if(m<0||m>11) return; const c=s.cat||'Other'; (grid[c] ||= Array(12).fill(0))[m] += s.amount||0; colTot[m] += s.amount||0; });
+  const yCats = [...SPEND, ...Object.keys(grid).filter(c=>!SPEND.includes(c))].filter(c=>grid[c]);
+  const cur = ui.spMonth.getMonth();
+  const cell = (v,i) => `<td class="${i===cur?'cur':''}">${v?money(v).replace('R','').trim():''}</td>`;
+  $('#yearTable').innerHTML = yCats.length
+    ? `<thead><tr><th>Category</th>${MONTHS.map((m,i)=>`<th class="${i===cur?'cur':''}">${m.slice(0,3)}</th>`).join('')}<th>Total</th></tr></thead><tbody>`
+      + yCats.map(c=>`<tr><th>${esc(c)}</th>${grid[c].map(cell).join('')}<td><strong>${money(grid[c].reduce((a,b)=>a+b,0)).replace('R','').trim()}</strong></td></tr>`).join('')
+      + `</tbody><tfoot><tr><th>Total</th>${colTot.map(cell).join('')}<td><strong>${money(colTot.reduce((a,b)=>a+b,0)).replace('R','').trim()}</strong></td></tr></tfoot>`
+    : '<tbody><tr><td class="empty">Nothing logged this year yet.</td></tr></tbody>';
+  // bills
   const bills = [...S.bills].sort((a,b)=>(a.day||0)-(b.day||0));
   const billSum = bills.reduce((a,b)=>a+(b.amount||0),0);
   $('#billTotal').textContent = bills.length ? `${money(billSum)} a month` : '';
   $('#billList').innerHTML = bills.length ? bills.map(b => {
     const paid = billPaid(b, month), date = billDate(b, ui.spMonth);
     const status = paid ? '<span class="chip olive">Paid</span>' : (month===ym(parse(TODAY)) ? dueChip(date) : `<span class="chip">${esc(fmtShort(date))}</span>`);
-    return `<li><span class="grow"><strong>${esc(b.name)}</strong> <span class="money">${money(b.amount)}</span><br><span class="small muted">Day ${esc(b.day)} &middot; ${esc(b.cat)}</span></span>${status}${paid?'':`<button type="button" class="btn ghost small" data-pay="${esc(b.id)}">Mark paid</button>`}<button type="button" class="iconbtn" data-del-bill="${esc(b.id)}" aria-label="Remove ${esc(b.name)}">&times;</button></li>`;
-  }).join('') : '<li class="empty">Add debit orders and bills so they show on the calendar each month.</li>';
-  const sd = $('#spDate'); if(!sd.value) sd.value = TODAY;
-  fillWho($('#spWho'), [['joint','Joint account']]);
+    return `<li><span class="grow"><strong>${esc(b.name)}</strong> <span class="money">${money(b.amount)}</span><br><span class="small muted">Goes off on day ${esc(b.day)}</span></span>${status}${paid?'':`<button type="button" class="btn ghost small" data-pay="${esc(b.id)}">Mark paid</button>`}<button type="button" class="iconbtn" data-del-bill="${esc(b.id)}" aria-label="Remove ${esc(b.name)}">&times;</button></li>`;
+  }).join('') : '<li class="empty">Add debit orders and bills so they show on the calendar each month. Marking one paid does not add it to the spending totals.</li>';
   const be = $('#budgetEdit');
-  if(!be.dataset.built){ be.innerHTML = SPEND.map((c,i)=>`<label>${esc(c)}<input type="number" min="0" step="1" inputmode="numeric" id="bud-${i}" data-bud="${esc(c)}" placeholder="R"></label>`).join(''); be.dataset.built='1'; }
+  if(!be.dataset.built){ be.innerHTML = SPEND.map((c,i)=>`<label>${esc(c)}<input type="text" inputmode="decimal" id="bud-${i}" data-bud="${esc(c)}" placeholder="R"></label>`).join(''); be.dataset.built='1'; }
   $$('[data-bud]').forEach(inp => { if(document.activeElement!==inp && !be.dataset.dirty){ const v=S.budgets[inp.dataset.bud]; inp.value = v ? Math.round(v/100) : ''; } });
 }
-const moveSp = d => { ui.spMonth = d; subSpend(); renderSpending(); };
+const moveSp = d => { const yChanged = d.getFullYear()!==ui.spMonth.getFullYear(); ui.spMonth = d; if(yChanged) subSpend(); renderSpending(); };
 $('#spPrev').onclick = () => moveSp(new Date(ui.spMonth.getFullYear(), ui.spMonth.getMonth()-1, 1));
 $('#spNext').onclick = () => moveSp(new Date(ui.spMonth.getFullYear(), ui.spMonth.getMonth()+1, 1));
 $('#spNow').onclick = () => { const t=parse(TODAY); moveSp(new Date(t.getFullYear(), t.getMonth(), 1)); };
 $('#spForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const amount = toCents($('#spAmount').value), date = $('#spDate').value;
-  if(!(amount>0) || !date) return;
-  const data = {amount, date, month:date.slice(0,7), cat:$('#spCat').value, who:$('#spWho').value, note:$('#spNote').value.trim(), by:S.me, at:Date.now()};
+  const amount = parseAmount($('#spAmount').value), month = $('#spBudgetMonth').value;
+  if(!(amount>0)){ toast('Enter the amount, for example 162,36'); $('#spAmount').focus(); return; }
+  if(!chosenAcct){ toast('Choose whose bank account it came from.'); return; }
+  const data = {account:chosenAcct, month, cat:$('#spCat').value, amount, note:$('#spNote').value.trim(), date:TODAY, by:S.me, at:Date.now()};
   if(await save(()=>db.collection('spending').add(data))){
     $('#spAmount').value=''; $('#spNote').value='';
-    toast(`Logged ${money(amount)}`);
-    if(data.month !== ym(ui.spMonth)) moveSp(parse(data.month+'-01'));
+    toast(`Logged ${money(amount)} to ${monthLabel(month)}`);
+    if(month !== ym(ui.spMonth)) moveSp(parse(month+'-01'));
   }
 });
 $('#billForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const amount = toCents($('#billAmt').value), day = parseInt($('#billDay').value,10), name=$('#billName').value.trim();
+  const amount = parseAmount($('#billAmt').value), day = parseInt($('#billDay').value,10), name=$('#billName').value.trim();
   if(!name || !(amount>=0) || !(day>=1 && day<=31)) return;
-  if(await save(()=>db.collection('bills').add({name, amount, day, cat:$('#billCat').value, paid:[], at:Date.now()}))){ ['#billName','#billAmt','#billDay'].forEach(s=>$(s).value=''); toast('Bill added'); }
+  if(await save(()=>db.collection('bills').add({name, amount, day, paid:[], at:Date.now()}))){ ['#billName','#billAmt','#billDay'].forEach(s=>$(s).value=''); toast('Bill added'); }
 });
 $('#budgetEdit').addEventListener('input', () => $('#budgetEdit').dataset.dirty='1');
 $('#budgetForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const b = {}; $$('[data-bud]').forEach(inp => { const v=parseFloat(inp.value); if(v>0) b[inp.dataset.bud]=Math.round(v*100); });
+  const b = {}; $$('[data-bud]').forEach(inp => { const v=parseAmount(inp.value); if(v>0) b[inp.dataset.bud]=v; });
   if(await save(()=>db.doc('board/budgets').set({cats:b, by:S.me}))){ delete $('#budgetEdit').dataset.dirty; toast('Budgets saved'); }
 });
 document.addEventListener('click', async e => {
-  const d=e.target.closest('[data-del-sp]'); if(d){ save(()=>db.doc('spending/'+d.dataset.delSp).delete()); return; }
+  const d=e.target.closest('[data-del-sp]');
+  if(d){ if(d.dataset.sure!=='1'){ d.dataset.sure='1'; d.textContent='Sure?'; d.classList.add('small'); return; } save(()=>db.doc('spending/'+d.dataset.delSp).delete()); return; }
   const bl=e.target.closest('[data-del-bill]');
-  if(bl){ if(bl.dataset.sure!=='1'){ bl.dataset.sure='1'; bl.innerHTML='Sure?'; bl.classList.add('small'); return; } save(()=>db.doc('bills/'+bl.dataset.delBill).delete()); return; }
+  if(bl){ if(bl.dataset.sure!=='1'){ bl.dataset.sure='1'; bl.textContent='Sure?'; bl.classList.add('small'); return; } save(()=>db.doc('bills/'+bl.dataset.delBill).delete()); return; }
   const p=e.target.closest('[data-pay]');
   if(p){
     const b=S.bills.find(x=>x.id===p.dataset.pay); if(!b) return;
-    const month = ym(ui.spMonth), date = billDate(b, ui.spMonth) > TODAY && month===ym(parse(TODAY)) ? TODAY : billDate(b, ui.spMonth);
-    const batch = db.batch();
-    batch.set(db.collection('spending').doc(), {amount:b.amount, date, month, cat:b.cat, who:'joint', note:b.name, bill:b.id, by:S.me, at:Date.now()});
-    batch.update(db.doc('bills/'+b.id), {paid:[...(b.paid||[]).filter(m=>m!==month), month].slice(-36)});
-    if(await save(()=>batch.commit())) toast(`${b.name} marked as paid`);
+    const month = ym(ui.spMonth);
+    if(await save(()=>db.doc('bills/'+b.id).update({paid:[...(b.paid||[]).filter(m=>m!==month), month].slice(-36)}))) toast(`${b.name} marked as paid`);
   }
 });
 
