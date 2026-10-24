@@ -142,7 +142,16 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.tab:focus-visible,
 .lb-pics img{width:100%;border-radius:10px;max-height:62vh;object-fit:contain;background:var(--sunk)}
 /* cats */
 .cats{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));align-items:start}
-.catphoto{width:72px;height:72px;border-radius:50%;background:var(--clay-soft);color:var(--clay);display:grid;place-items:center;font-family:var(--display);font-size:28px;overflow:hidden;flex:0 0 72px}
+.catphoto{width:104px;height:104px;border-radius:50%;background:var(--clay-soft);color:var(--clay);display:grid;place-items:center;font-family:var(--display);font-size:40px;overflow:hidden;flex:0 0 104px;position:relative;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.catphoto .camtag{position:absolute;left:0;right:0;bottom:0;background:rgba(30,26,20,.55);color:#fff;font:600 11px var(--body);padding:4px 0 6px;letter-spacing:.03em;opacity:0;transition:opacity .15s}
+.catphoto:hover .camtag,.catphoto:focus-visible .camtag,.catphoto.busy .camtag{opacity:1}
+.catphoto:not(:has(img)) .camtag{opacity:1;background:transparent;color:var(--clay)}
+.catphoto.busy img{opacity:.5}
+.catav{border-radius:50%;background:var(--clay-soft);color:var(--clay);display:inline-grid;place-items:center;font-family:var(--display);overflow:hidden;flex:0 0 auto}
+.catav img{width:100%;height:100%;object-fit:cover}
+.catstrip{display:flex;gap:16px;flex-wrap:wrap}
+.catchip{display:grid;justify-items:center;gap:6px;text-decoration:none;color:var(--ink);font-weight:600;font-size:14px}
+.catchip .catav{border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
 .catphoto img{width:100%;height:100%;object-fit:cover}
 .cathead{display:flex;gap:14px;align-items:center}
 .cathead h2{overflow-wrap:anywhere}
@@ -429,6 +438,8 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
       <h2>The cats</h2>
       <div class="form-row"><input id="catName" placeholder="Cat's name" required maxlength="40"><button class="btn" type="submit">Add a cat</button></div>
     </form>
+    <div class="catstrip" id="catStrip" hidden></div>
+    <input type="file" accept="image/*" id="catPhotoInput" hidden>
     <div class="cats" id="catList"></div>
   </section>
 
@@ -579,7 +590,7 @@ function renderHeader(meName){
 /* ---------- derived ---------- */
 function catDue(){
   const out=[];
-  S.cats.forEach(c => CARE.forEach(([k,l]) => { if(c[k]) out.push({date:c[k], label:`${c.name}: ${l.toLowerCase()}`}); }));
+  S.cats.forEach(c => CARE.forEach(([k,l]) => { if(c[k]) out.push({date:c[k], label:`${c.name}: ${l.toLowerCase()}`, cat:c}); }));
   return out.sort((a,b)=>a.date.localeCompare(b.date));
 }
 function billDate(b, monthDate){
@@ -630,7 +641,7 @@ function renderHome(){
     ...catDue().filter(d => diffDays(TODAY, d.date) <= 14),
     ...S.bills.filter(b => !billPaid(b, thisMonth)).map(b => ({date:billDate(b, mDate), label:`${b.name} (${money(b.amount)})`})).filter(d => diffDays(TODAY, d.date) <= 7)
   ].sort((a,b)=>a.date.localeCompare(b.date));
-  $('#homeDue').innerHTML = due.length ? due.map(d => `<li><span class="grow">${esc(d.label)}</span>${dueChip(d.date)}</li>`).join('') : '<li class="empty">No cat care or bills due soon.</li>';
+  $('#homeDue').innerHTML = due.length ? due.map(d => `<li>${d.cat?catAvatar(d.cat,32):''}<span class="grow">${esc(d.label)}</span>${dueChip(d.date)}</li>`).join('') : '<li class="empty">No cat care or bills due soon.</li>';
   const left = S.shopping.filter(s => !s.done).length;
   $('#homeShop').textContent = `${left} item${left===1?'':'s'} on the shopping list.`;
 }
@@ -1026,13 +1037,15 @@ function ageOf(b){
   return y ? `${y} yr${y===1?'':'s'}${m?` ${m} mo`:''}` : `${m} month${m===1?'':'s'}`;
 }
 const FOOD = ['Plenty','About half','Running low','Out'];
+let catUploading = null;
+const catAvatar = (c, size) => `<span class="catav" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.4)}px">${c && c.photoData ? `<img src="${c.photoData}" alt="">` : esc(((c&&c.name)||'?').slice(0,1).toUpperCase())}</span>`;
 function catView(c){
   const w = (c.weights||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const last = w[0], prev = w[1], trend = last && prev ? (last.kg-prev.kg) : null;
   const visits = (c.visits||[]).slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
-  return `<article class="card" data-cat="${esc(c.id)}">
+  return `<article class="card" data-cat="${esc(c.id)}" id="cat-${esc(c.id)}">
     <div class="cathead">
-      <div class="catphoto">${c.photoData ? `<img src="${c.photoData}" alt="${esc(c.name)}">` : esc((c.name||'?').slice(0,1).toUpperCase())}</div>
+      <button type="button" class="catphoto ${catUploading===c.id?'busy':''}" data-pickphoto="${esc(c.id)}" aria-label="${c.photoData?'Change':'Add'} ${esc(c.name)}'s profile picture">${c.photoData ? `<img src="${c.photoData}" alt="${esc(c.name)}">` : `<span class="initial">${esc((c.name||'?').slice(0,1).toUpperCase())}</span>`}<span class="camtag">${catUploading===c.id?'Saving':(c.photoData?'Change':'Add photo')}</span></button>
       <div style="min-width:0"><h2>${esc(c.name)}</h2><div class="small muted">${[c.desc, ageOf(c.birthday)].filter(Boolean).map(esc).join(' &middot; ') || 'Add a description and birthday with Edit'}</div></div>
     </div>
     <div class="care">${CARE.map(([k,l]) => `<span class="lbl">${l}</span>${c[k] ? dueChip(c[k]) : '<span class="chip">Not set</span>'}`).join('')}</div>
@@ -1047,7 +1060,7 @@ function catView(c){
     <div class="form-row">
       <button class="btn small" type="button" data-edit-cat="${esc(c.id)}">Edit</button>
       ${(c.foodLeft==='Running low'||c.foodLeft==='Out') ? `<button class="btn ghost small" type="button" data-catfood="${esc(c.id)}">Add food to shopping</button>` : ''}
-      <label class="btn ghost small">Photo<input type="file" accept="image/*" data-catphoto="${esc(c.id)}"></label>
+      <button class="btn ghost small" type="button" data-pickphoto="${esc(c.id)}">${c.photoData?'Change photo':'Add profile picture'}</button>
     </div>
   </article>`;
 }
@@ -1065,6 +1078,8 @@ function catEdit(c){
 function renderCats(){
   if(ui.editingCat){ if(!S.cats.some(c=>c.id===ui.editingCat)) ui.editingCat=null; else return; }
   const cats = [...S.cats].sort((a,b)=>(a.at||0)-(b.at||0));
+  const strip = $('#catStrip'); strip.hidden = !cats.length;
+  strip.innerHTML = cats.map(c=>`<a class="catchip" href="#cat-${esc(c.id)}" data-jumpcat="${esc(c.id)}">${catAvatar(c,56)}<span>${esc(c.name)}</span></a>`).join('');
   $('#catList').innerHTML = cats.length ? cats.map(catView).join('') : '<div class="card flat"><div class="empty">No cats yet. Add each of your four with the form above, then tap Edit to set their flea, deworming, vaccination and vet dates.</div></div>';
 }
 $('#catForm').addEventListener('submit', async e => {
@@ -1107,12 +1122,21 @@ $('#catList').addEventListener('submit', async e => {
     if(await save(()=>db.doc('cats/'+c.id).update({visits}))) toast('Visit logged');
   }
 });
-$('#catList').addEventListener('change', async e => {
-  const inp=e.target.closest('[data-catphoto]'); if(!inp) return;
-  const file=inp.files && inp.files[0]; if(!file) return;
-  const c=S.cats.find(x=>x.id===inp.dataset.catphoto); if(!c) return;
-  try{ const img=await loadImg(file); const data=toDataUrl(img, 320, 0.8, 80000); if(data && await save(()=>db.doc('cats/'+c.id).update({photoData:data}))) toast('Photo updated'); }
-  catch(err){ toast('That file could not be opened as a photo.'); }
+// One picker that never gets redrawn, so a photo chosen on the phone is never lost
+let pickFor = null;
+document.addEventListener('click', e => { const b=e.target.closest('[data-pickphoto]'); if(!b) return; pickFor=b.dataset.pickphoto; const inp=$('#catPhotoInput'); inp.value=''; inp.click(); });
+$('#catPhotoInput').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0]; const id = pickFor; e.target.value='';
+  if(!file || !id) return;
+  const c = S.cats.find(x=>x.id===id); if(!c){ toast('That cat could not be found. Try again.'); return; }
+  catUploading = id; schedule();
+  try{
+    const img = await loadImg(file);
+    const data = toDataUrl(img, 420, 0.82, 120000);
+    if(!data){ toast('That photo could not be shrunk enough. Try another one.'); return; }
+    if(await save(()=>db.doc('cats/'+id).update({photoData:data}))) toast(`${c.name}'s profile picture is saved`);
+  }catch(err){ console.warn(err); toast('That file could not be opened as a photo. Try a JPG or PNG.'); }
+  finally{ catUploading = null; schedule(); }
 });
 
 /* ---------- JAR ---------- */
