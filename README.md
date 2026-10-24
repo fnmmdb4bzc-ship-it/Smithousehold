@@ -1,90 +1,75 @@
-# The Smit Household: setup guide (Supabase)
+# The Smit Household
 
-This folder has:
+The household home portal: calendar, shopping list, meal planner, spending tracker, photo a day album, morning messages, cat care, date night jar, countdowns and shared notes.
 
-- `index.html` is the whole app.
-- `us.jpg` (your photo) and `backdrop.jpg` (the sage flowers). Keep them next to `index.html`.
-- `setup.sql` creates the database, the private photo storage, and the rule that only your two Gmail addresses can get in.
-- `README.md` is this guide.
+- Live address: https://smithousehold.netlify.app
+- Database, sign-in and photo storage: Supabase project `vtmiruevfbdqbcflbtrl` (region eu-west-1, Ireland)
+- Code: this repository. Netlify publishes it automatically whenever it changes.
 
-Everything runs on Supabase's free plan, with Google handling the sign-in. Supabase and Google change their screens from time to time, so a button may have moved or been renamed since I wrote this. I am guessing the whole setup takes 30 to 45 minutes the first time; the Google part is the fiddliest.
+## What is already set up (24 October 2026)
 
-## 1. Create the Supabase project
+- **Supabase database**: the `docs` table that holds everything, live updates between phones, and a private `photos` storage bucket.
+- **Access rules**: only the emails in the `allowed_emails` table can read or change anything. It currently holds `kaylee1smit@gmail.com` and `deborahlynnsimone@gmail.com`. I tested this: an allowed email can read and write, any other account sees nothing and cannot add anything.
+- **The page** is already connected to the Supabase project (the URL and public key are in `index.html`; the public key is meant to be visible, the access rules are what protect the data).
+- **Netlify project** `smithousehold` exists in the Debby Smit team, waiting for its first deploy.
 
-1. Go to https://supabase.com and create a free account.
-2. Click **New project**. Name it `smit-household`.
-3. Choose a database password and save it somewhere safe (you will not need it day to day).
-4. Pick a region. I don't know whether Supabase offers a South African region; if not, a Europe region (for example London or Frankfurt) is likely the closest. This cannot be changed later.
-5. Wait a minute or two while it is created.
+`setup.sql` is a record of the database setup, in case it ever has to be re-created.
 
-## 2. Run the database setup
+## What still needs doing (in a browser)
 
-1. Open `setup.sql` in a text editor (Notepad on Windows, TextEdit on Mac in plain text mode).
-2. Change the two example emails to your Gmail address and your wife's, in lower case.
-3. In Supabase, open **SQL Editor**, start a **New query**, paste the whole file and click **Run**. It should say "Success. No rows returned".
+### A. Put the code on GitHub
 
-## 3. Connect the page to your project
+1. Go to https://github.com/new
+2. Repository name: `smit-household`. Choose **Private**. Leave every "Add a README / .gitignore / license" box **unticked** so it is empty.
+3. Click **Create repository**, then tell Claude. Claude pushes the code.
 
-1. In Supabase, open **Project Settings** and find the API keys section (it may be called **API** or **API Keys**).
-2. Copy the **Project URL** (looks like `https://abcdefgh.supabase.co`).
-3. Copy the **anon** key. Newer projects may call it the **publishable** key. Either works. Do not use the **service_role** or **secret** key, which must never go in a web page.
-4. Open `index.html` in a text editor, search for `PASTE_YOUR_PROJECT_URL`, and paste the two values between the quote marks. Save.
+### B. Connect Netlify to GitHub
 
-The anon or publishable key is meant to sit in a web page. The protection comes from the email rule in `setup.sql`.
+1. Go to https://app.netlify.com/projects/smithousehold
+2. Open **Project configuration > Build and deploy > Continuous deployment** and click **Link repository** (the wording may differ slightly).
+3. Choose GitHub, approve access for the `smit-household` repository only, and pick it.
+4. Leave the build command empty and set the publish directory to `.` (the `netlify.toml` file already says this).
+5. Deploy. After about a minute https://smithousehold.netlify.app shows the sign-in page.
 
-## 4. Put the page online
+### C. Google sign-in
 
-The simplest free option I know of is Netlify Drop. I have not checked that it still works exactly this way, so please confirm on the site.
+**In Google Cloud** (https://console.cloud.google.com, signed in as deborahlynnsimone@gmail.com):
 
-1. Go to https://app.netlify.com/drop and drag this whole folder onto the page.
-2. Netlify gives you an address ending in `.netlify.app`. Make a free Netlify account if asked, so the site is kept.
-3. Write the address down. The steps below call it YOUR-SITE, for example `https://smit-household-123.netlify.app`.
-
-To update the site later, drag the folder onto the site's **Deploys** page in Netlify.
-
-## 5. Set up Google sign-in
-
-Supabase needs a Google "OAuth client" so the Sign in with Google button works.
-
-**In Google Cloud**
-
-1. Go to https://console.cloud.google.com with your Google account and create a new project (for example `Smit Household`).
-2. Open **Google Auth Platform** (older screens call it **OAuth consent screen**). Fill in an app name, choose your email as support email, and choose **External** as the audience.
-3. Under **Audience** (or **Test users**), add your Gmail and your wife's Gmail as test users. While the app is in testing mode, only these accounts can sign in, which suits a two person household.
-4. Go to **Clients** (or **Credentials > Create credentials > OAuth client ID**) and create a **Web application** client.
-   - Under **Authorised JavaScript origins**, add YOUR-SITE.
-   - Under **Authorised redirect URIs**, add the callback address Supabase shows you in the next part. It looks like `https://abcdefgh.supabase.co/auth/v1/callback`.
+1. Create a new project called `Smit Household`.
+2. Open **Google Auth Platform** (older screens: **OAuth consent screen**). App name `The Smit Household`, your email as support email, audience **External**.
+3. Under **Audience**, add both Gmail addresses as **test users**. While the app is in testing mode only these two accounts can sign in, which suits a two person household.
+4. Under **Clients**, create a client of type **Web application**:
+   - Authorised JavaScript origins: `https://smithousehold.netlify.app`
+   - Authorised redirect URIs: `https://vtmiruevfbdqbcflbtrl.supabase.co/auth/v1/callback`
 5. Copy the **Client ID** and **Client secret**.
 
-**In Supabase**
+**In Supabase** (https://supabase.com/dashboard/project/vtmiruevfbdqbcflbtrl):
 
-6. Go to **Authentication > Sign In / Providers** (older screens: **Providers**), open **Google**, switch it on, paste the Client ID and Client secret, and save. This screen also shows the callback address for step 4.
-7. Go to **Authentication > URL Configuration**.
-   - Set **Site URL** to YOUR-SITE.
-   - Under **Redirect URLs**, add YOUR-SITE followed by `/**` (for example `https://smit-household-123.netlify.app/**`).
+6. **Authentication > Sign In / Providers > Google**: switch on, paste the Client ID and Client secret, save.
+7. **Authentication > URL Configuration**:
+   - Site URL: `https://smithousehold.netlify.app`
+   - Redirect URLs: add `https://smithousehold.netlify.app/**`
 
-## 6. Use it
+Screens in Google Cloud and Supabase change from time to time, so a button may have moved or been renamed.
 
-1. Open YOUR-SITE on both phones and sign in with Google.
-2. On iPhone: Share button, then **Add to Home Screen**. On Android: Chrome menu, then **Add to Home screen**.
-3. Your wife's name appears on messages and photos after she signs in for the first time.
+## Using it
 
-If sign-in sends you back with an error, the message is shown under the sign-in button. The most common causes are a missing redirect URL in step 7, or the Google redirect URI in step 4 not matching exactly.
+Open https://smithousehold.netlify.app on both phones and sign in with Google. On iPhone use Share, then **Add to Home Screen**; on Android use the Chrome menu, then **Add to Home screen**.
+
+If sign-in fails, the reason shows under the sign-in button. The usual causes are a redirect URL that does not match exactly (steps 4 and 7) or an email that is not a test user (step 3).
+
+## Changing who has access
+
+In Supabase open **Table Editor > allowed_emails** and add or remove a row. Emails must be lower case.
 
 ## Free plan limits
 
 From a July 2026 Supabase pricing guide by Jet Admin, not Supabase's own page, so go verify:
 
-- 500 MB database per project
-- 1 GB file storage per project
+- 500 MB database and 1 GB file storage per project
 - 5 GB uncached plus 5 GB cached data out per month
-- 50,000 monthly active users
-- **Free projects are paused after 7 days of inactivity** and must be switched back on by hand in the Supabase dashboard. If you both use the page most days this should not happen, but after a long holiday you may need to log into Supabase and click restore. I am not certain exactly what counts as activity.
+- **Free projects are paused after 7 days of inactivity** and must be restored by hand in the Supabase dashboard. Daily use should prevent this. I am not certain exactly what counts as activity.
 
-How the photos are stored: a small thumbnail (roughly 30 to 90 KB) sits in the database for the album grid, and the full photo (up to 1600 pixels wide) goes into private Supabase storage. I am guessing here on sizes: two photos a day for a year should come to roughly 150 to 400 MB of storage and 40 to 120 MB of database. That is approximate, so watch the **Usage** page in Supabase.
+Photos: a small thumbnail sits in the database and the full photo (up to 1600 pixels wide) goes into private storage. I am guessing here: two photos a day for a year should come to roughly 150 to 400 MB of storage. This is approximate, so watch the **Usage** page in Supabase.
 
-## Things to know
-
-- **Backups:** I don't know whether the free plan includes any automatic backups. Keep your original photos on your phones as well.
-- **Live updates:** changes on one phone show on the other within a second or two. The page also refreshes itself every minute and whenever you reopen it.
-- **Changing who has access:** edit the two emails in `setup.sql` and run it again in the SQL Editor.
+I don't know whether the free plan includes automatic backups. Keep original photos on your phones too.
