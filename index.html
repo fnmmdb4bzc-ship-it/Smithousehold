@@ -838,7 +838,7 @@ function renderSpending(){
     const paid = billPaid(b, month), date = billDate(b, ui.spMonth);
     const status = paid ? '<span class="chip olive">Paid</span>' : (month===ym(parse(TODAY)) ? dueChip(date) : `<span class="chip">${esc(fmtShort(date))}</span>`);
     return `<li><span class="grow"><strong>${esc(b.name)}</strong> <span class="money">${money(b.amount)}</span><br><span class="small muted">Goes off on day ${esc(b.day)}</span></span>${status}${paid?'':`<button type="button" class="btn ghost small" data-pay="${esc(b.id)}">Mark paid</button>`}<button type="button" class="iconbtn" data-del-bill="${esc(b.id)}" aria-label="Remove ${esc(b.name)}">&times;</button></li>`;
-  }).join('') : '<li class="empty">Add debit orders and bills so they show on the calendar each month. Marking one paid does not add it to the spending totals.</li>';
+  }).join('') : '<li class="empty">Add debit orders and bills so they show on the calendar each month. Marking one paid does not add it to the expense totals.</li>';
   const be = $('#budgetEdit');
   if(!be.dataset.built){ be.innerHTML = SPEND.map((c,i)=>`<label>${esc(c)}<input type="text" inputmode="decimal" id="bud-${i}" data-bud="${esc(c)}" placeholder="R"></label>`).join(''); be.dataset.built='1'; }
   $$('[data-bud]').forEach(inp => { if(document.activeElement!==inp && !be.dataset.dirty){ const v=S.budgets[inp.dataset.bud]; inp.value = v ? Math.round(v/100) : ''; } });
