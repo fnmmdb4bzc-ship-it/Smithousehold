@@ -150,6 +150,11 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.tab:focus-visible,
 .catav{border-radius:50%;background:var(--clay-soft);color:var(--clay);display:inline-grid;place-items:center;font-family:var(--display);overflow:hidden;flex:0 0 auto}
 .catav img{width:100%;height:100%;object-fit:cover}
 .catstrip{display:flex;gap:16px;flex-wrap:wrap}
+.crop-inner{max-width:420px}
+.cropview{width:100%;max-width:360px;margin:0 auto;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--sunk)}
+.cropview canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.cropview canvas:active{cursor:grabbing}
+#cropZoom{padding:0;accent-color:var(--olive)}
 .catchip{display:grid;justify-items:center;gap:6px;text-decoration:none;color:var(--ink);font-weight:600;font-size:14px}
 .catchip .catav{border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
 .catphoto img{width:100%;height:100%;object-fit:cover}
@@ -501,6 +506,13 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 <div class="lightbox" id="lightbox" hidden><div class="lb-inner" role="dialog" aria-modal="true" aria-labelledby="lbTitle">
   <div class="card-head"><h2 id="lbTitle"></h2><button class="btn ghost small" id="lbClose" type="button">Close</button></div>
   <div class="lb-pics" id="lbPics"></div>
+</div></div>
+<div class="lightbox" id="cropBox" hidden><div class="lb-inner crop-inner" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
+  <h2 id="cropTitle">Position the picture</h2>
+  <p class="small muted" style="margin:0">Drag the photo to move it. Use the slider, or pinch with two fingers, to zoom.</p>
+  <div class="cropview"><canvas id="cropCanvas" width="640" height="640" aria-label="Photo preview inside the profile circle"></canvas></div>
+  <label class="field"><span class="flbl">Zoom</span><input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1"></label>
+  <div class="form-row" style="justify-content:flex-end"><button class="btn ghost" id="cropCancel" type="button" style="flex:0 0 auto">Cancel</button><button class="btn" id="cropSave" type="button" style="flex:0 0 auto">Save picture</button></div>
 </div></div>
 <div class="toast" id="toast" hidden></div>
 
@@ -1060,7 +1072,7 @@ function catView(c){
     <div class="form-row">
       <button class="btn small" type="button" data-edit-cat="${esc(c.id)}">Edit</button>
       ${(c.foodLeft==='Running low'||c.foodLeft==='Out') ? `<button class="btn ghost small" type="button" data-catfood="${esc(c.id)}">Add food to shopping</button>` : ''}
-      <button class="btn ghost small" type="button" data-pickphoto="${esc(c.id)}">${c.photoData?'Change photo':'Add profile picture'}</button>
+      <button class="btn ghost small" type="button" data-pickphoto="${esc(c.id)}">${c.photoData?'Change photo':'Add profile picture'}</button>${c.photoData?`<button class="btn ghost small" type="button" data-adjustphoto="${esc(c.id)}">Adjust position</button>`:''}
     </div>
   </article>`;
 }
@@ -1128,15 +1140,73 @@ document.addEventListener('click', e => { const b=e.target.closest('[data-pickph
 $('#catPhotoInput').addEventListener('change', async e => {
   const file = e.target.files && e.target.files[0]; const id = pickFor; e.target.value='';
   if(!file || !id) return;
-  const c = S.cats.find(x=>x.id===id); if(!c){ toast('That cat could not be found. Try again.'); return; }
-  catUploading = id; schedule();
-  try{
-    const img = await loadImg(file);
-    const data = toDataUrl(img, 420, 0.82, 120000);
-    if(!data){ toast('That photo could not be shrunk enough. Try another one.'); return; }
-    if(await save(()=>db.doc('cats/'+id).update({photoData:data}))) toast(`${c.name}'s profile picture is saved`);
-  }catch(err){ console.warn(err); toast('That file could not be opened as a photo. Try a JPG or PNG.'); }
-  finally{ catUploading = null; schedule(); }
+  try{ const img = await loadImg(file); openCrop(id, img, true); }
+  catch(err){ console.warn(err); toast('That file could not be opened as a photo. Try a JPG or PNG.'); }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-adjustphoto]'); if(!b) return;
+  const c = S.cats.find(x=>x.id===b.dataset.adjustphoto); if(!c || !(c.photoOrig||c.photoData)) return;
+  const img = new Image(); img.onload = () => openCrop(c.id, img, false); img.src = c.photoOrig || c.photoData;
+});
+
+/* ---------- picture positioning (drag to move, slider or pinch to zoom) ---------- */
+const crop = { id:null, img:null, isNew:false, base:1, zoom:1, ox:0, oy:0, pointers:new Map(), pinch:null };
+const CV = 640;
+function cropClamp(){
+  const sc = crop.base*crop.zoom, w = crop.img.naturalWidth*sc, h = crop.img.naturalHeight*sc;
+  crop.ox = Math.min(0, Math.max(CV - w, crop.ox));
+  crop.oy = Math.min(0, Math.max(CV - h, crop.oy));
+}
+function cropDraw(){
+  const cv = $('#cropCanvas'), g = cv.getContext('2d'), sc = crop.base*crop.zoom;
+  g.clearRect(0,0,CV,CV);
+  g.drawImage(crop.img, crop.ox, crop.oy, crop.img.naturalWidth*sc, crop.img.naturalHeight*sc);
+  g.save(); g.fillStyle = 'rgba(25,22,18,.55)'; g.beginPath(); g.rect(0,0,CV,CV); g.arc(CV/2, CV/2, CV/2-6, 0, Math.PI*2, true); g.fill('evenodd');
+  g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 4; g.beginPath(); g.arc(CV/2, CV/2, CV/2-6, 0, Math.PI*2); g.stroke(); g.restore();
+}
+function cropZoomTo(z, cx=CV/2, cy=CV/2){
+  const old = crop.base*crop.zoom; crop.zoom = Math.min(4, Math.max(1, z)); const nw = crop.base*crop.zoom;
+  crop.ox = cx - (cx - crop.ox) * nw/old; crop.oy = cy - (cy - crop.oy) * nw/old;
+  cropClamp(); $('#cropZoom').value = crop.zoom; cropDraw();
+}
+function openCrop(id, img, isNew){
+  Object.assign(crop, { id, img, isNew, zoom:1, pointers:new Map(), pinch:null });
+  crop.base = Math.max(CV/img.naturalWidth, CV/img.naturalHeight);
+  crop.ox = (CV - img.naturalWidth*crop.base)/2; crop.oy = (CV - img.naturalHeight*crop.base)/2;
+  $('#cropZoom').value = 1; $('#cropBox').hidden = false; cropDraw();
+}
+const cvScale = () => CV / $('#cropCanvas').getBoundingClientRect().width;
+const cvPoint = e => { const r = $('#cropCanvas').getBoundingClientRect(), k = CV/r.width; return [(e.clientX-r.left)*k, (e.clientY-r.top)*k]; };
+$('#cropCanvas').addEventListener('pointerdown', e => { e.preventDefault(); $('#cropCanvas').setPointerCapture(e.pointerId); crop.pointers.set(e.pointerId, [e.clientX, e.clientY]); if(crop.pointers.size===2){ const [a,b]=[...crop.pointers.values()]; crop.pinch = { d: Math.hypot(a[0]-b[0], a[1]-b[1]), z: crop.zoom }; } });
+$('#cropCanvas').addEventListener('pointermove', e => {
+  if(!crop.pointers.has(e.pointerId)) return;
+  const prev = crop.pointers.get(e.pointerId); crop.pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if(crop.pointers.size===2 && crop.pinch){
+    const [a,b]=[...crop.pointers.values()]; const d = Math.hypot(a[0]-b[0], a[1]-b[1]);
+    const r = $('#cropCanvas').getBoundingClientRect(), k = CV/r.width;
+    cropZoomTo(crop.pinch.z * d/crop.pinch.d, ((a[0]+b[0])/2 - r.left)*k, ((a[1]+b[1])/2 - r.top)*k);
+  } else if(crop.pointers.size===1){
+    const k = cvScale(); crop.ox += (e.clientX-prev[0])*k; crop.oy += (e.clientY-prev[1])*k; cropClamp(); cropDraw();
+  }
+});
+const endPointer = e => { crop.pointers.delete(e.pointerId); if(crop.pointers.size<2) crop.pinch = null; };
+['pointerup','pointercancel','pointerleave'].forEach(t => $('#cropCanvas').addEventListener(t, endPointer));
+$('#cropCanvas').addEventListener('wheel', e => { e.preventDefault(); const [x,y] = cvPoint(e); cropZoomTo(crop.zoom * (e.deltaY<0 ? 1.08 : 1/1.08), x, y); }, { passive:false });
+$('#cropZoom').addEventListener('input', e => cropZoomTo(parseFloat(e.target.value)));
+$('#cropCancel').addEventListener('click', () => { $('#cropBox').hidden = true; crop.img = null; });
+$('#cropSave').addEventListener('click', async () => {
+  const c = S.cats.find(x=>x.id===crop.id); if(!c || !crop.img) return;
+  const OUT = 420, k = OUT/CV, sc = crop.base*crop.zoom*k;
+  const out = document.createElement('canvas'); out.width = OUT; out.height = OUT;
+  out.getContext('2d').drawImage(crop.img, crop.ox*k, crop.oy*k, crop.img.naturalWidth*sc, crop.img.naturalHeight*sc);
+  let q = 0.86, data = out.toDataURL('image/jpeg', q);
+  while(data.length > 120000 && q > 0.45){ q -= 0.08; data = out.toDataURL('image/jpeg', q); }
+  const patch = { photoData: data };
+  if(crop.isNew){ const orig = toDataUrl(crop.img, 1000, 0.8, 300000); if(orig) patch.photoOrig = orig; }
+  $('#cropSave').disabled = true; catUploading = c.id; schedule();
+  const ok = await save(()=>db.doc('cats/'+c.id).update(patch));
+  $('#cropSave').disabled = false; catUploading = null; schedule();
+  if(ok){ $('#cropBox').hidden = true; crop.img = null; toast(`${c.name}'s profile picture is saved`); }
 });
 
 /* ---------- JAR ---------- */
