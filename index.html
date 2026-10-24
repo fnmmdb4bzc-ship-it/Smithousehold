@@ -231,7 +231,7 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 <div id="app" hidden>
 <nav class="tabs" aria-label="Sections"><div class="wrap" role="tablist" id="tabs">
   <button class="tab" role="tab" data-tab="home" id="t-home">Today</button>
-  <button class="tab" role="tab" data-tab="spending" id="t-spending">Spending</button>
+  <button class="tab" role="tab" data-tab="spending" id="t-spending">Expenses</button>
   <button class="tab" role="tab" data-tab="calendar" id="t-calendar">Calendar</button>
   <button class="tab" role="tab" data-tab="shopping" id="t-shopping">Shopping</button>
   <button class="tab" role="tab" data-tab="meals" id="t-meals">Meals</button>
@@ -329,7 +329,7 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
   <section class="panel" data-panel="spending" hidden>
     <div class="grid2">
       <form class="card" id="spForm">
-        <h2>Log spending</h2>
+        <h2>Log an expense</h2>
         <div class="field"><span class="flbl" id="whoLbl">Whose bank account?</span>
           <div class="seg" id="spWho" role="radiogroup" aria-labelledby="whoLbl">
             <button type="button" role="radio" data-acct="Kaylee" id="acct-k">Kaylee</button>
@@ -348,7 +348,7 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
           <div class="form-row" style="flex:0 0 auto"><button class="btn ghost small" id="spPrev" type="button">Prev</button><button class="btn ghost small" id="spNow" type="button">This month</button><button class="btn ghost small" id="spNext" type="button">Next</button></div>
         </div>
         <div class="card-head" style="align-items:flex-end">
-          <div><div class="small muted">Spent this budget month</div><div class="big money" id="spTotal">R 0,00</div></div>
+          <div><div class="small muted">Expenses this budget month</div><div class="big money" id="spTotal">R 0,00</div></div>
           <div style="text-align:right"><div class="small muted">Budget left</div><div class="big money" id="spLeft" style="font-size:24px">Not set</div></div>
         </div>
         <div class="split" id="spSplit"></div>
@@ -362,7 +362,7 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
       <ul class="list" id="spList"></ul>
     </div>
     <div class="card">
-      <div class="card-head"><h2 id="yearTitle">Year at a glance</h2><span class="small muted">Variable spending per budget month</span></div>
+      <div class="card-head"><h2 id="yearTitle">Year at a glance</h2><span class="small muted">Expenses per budget month</span></div>
       <div class="tablewrap"><table class="ytable" id="yearTable"></table></div>
     </div>
     <div class="grid2">
