@@ -509,9 +509,9 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 </div></div>
 <div class="lightbox" id="cropBox" hidden><div class="lb-inner crop-inner" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
   <h2 id="cropTitle">Position the picture</h2>
-  <p class="small muted" style="margin:0">Drag the photo to move it. Use the slider, or pinch with two fingers, to zoom.</p>
+  <p class="small muted" style="margin:0">Drag the photo to move it. Slide left to zoom out and right to zoom in, or pinch with two fingers. Whatever is inside the circle is saved.</p>
   <div class="cropview"><canvas id="cropCanvas" width="640" height="640" aria-label="Photo preview inside the profile circle"></canvas></div>
-  <label class="field"><span class="flbl">Zoom</span><input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1"></label>
+  <label class="field"><span class="flbl">Zoom</span><input type="range" id="cropZoom" min="0.35" max="5" step="0.01" value="1"></label>
   <div class="form-row" style="justify-content:flex-end"><button class="btn ghost" id="cropCancel" type="button" style="flex:0 0 auto">Cancel</button><button class="btn" id="cropSave" type="button" style="flex:0 0 auto">Save picture</button></div>
 </div></div>
 <div class="toast" id="toast" hidden></div>
@@ -1152,20 +1152,22 @@ document.addEventListener('click', async e => {
 /* ---------- picture positioning (drag to move, slider or pinch to zoom) ---------- */
 const crop = { id:null, img:null, isNew:false, base:1, zoom:1, ox:0, oy:0, pointers:new Map(), pinch:null };
 const CV = 640;
+const CROP_MIN = 0.35, CROP_MAX = 5, CROP_BG = '#DEE3CA';
 function cropClamp(){
-  const sc = crop.base*crop.zoom, w = crop.img.naturalWidth*sc, h = crop.img.naturalHeight*sc;
-  crop.ox = Math.min(0, Math.max(CV - w, crop.ox));
-  crop.oy = Math.min(0, Math.max(CV - h, crop.oy));
+  // keep part of the photo inside the circle, but let it move anywhere, including past its own edges
+  const sc = crop.base*crop.zoom, w = crop.img.naturalWidth*sc, h = crop.img.naturalHeight*sc, m = CV*0.2;
+  crop.ox = Math.min(CV - m, Math.max(m - w, crop.ox));
+  crop.oy = Math.min(CV - m, Math.max(m - h, crop.oy));
 }
 function cropDraw(){
   const cv = $('#cropCanvas'), g = cv.getContext('2d'), sc = crop.base*crop.zoom;
-  g.clearRect(0,0,CV,CV);
+  g.fillStyle = CROP_BG; g.fillRect(0,0,CV,CV);
   g.drawImage(crop.img, crop.ox, crop.oy, crop.img.naturalWidth*sc, crop.img.naturalHeight*sc);
   g.save(); g.fillStyle = 'rgba(25,22,18,.55)'; g.beginPath(); g.rect(0,0,CV,CV); g.arc(CV/2, CV/2, CV/2-6, 0, Math.PI*2, true); g.fill('evenodd');
   g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 4; g.beginPath(); g.arc(CV/2, CV/2, CV/2-6, 0, Math.PI*2); g.stroke(); g.restore();
 }
 function cropZoomTo(z, cx=CV/2, cy=CV/2){
-  const old = crop.base*crop.zoom; crop.zoom = Math.min(4, Math.max(1, z)); const nw = crop.base*crop.zoom;
+  const old = crop.base*crop.zoom; crop.zoom = Math.min(CROP_MAX, Math.max(CROP_MIN, z)); const nw = crop.base*crop.zoom;
   crop.ox = cx - (cx - crop.ox) * nw/old; crop.oy = cy - (cy - crop.oy) * nw/old;
   cropClamp(); $('#cropZoom').value = crop.zoom; cropDraw();
 }
@@ -1198,7 +1200,8 @@ $('#cropSave').addEventListener('click', async () => {
   const c = S.cats.find(x=>x.id===crop.id); if(!c || !crop.img) return;
   const OUT = 420, k = OUT/CV, sc = crop.base*crop.zoom*k;
   const out = document.createElement('canvas'); out.width = OUT; out.height = OUT;
-  out.getContext('2d').drawImage(crop.img, crop.ox*k, crop.oy*k, crop.img.naturalWidth*sc, crop.img.naturalHeight*sc);
+  const og = out.getContext('2d'); og.fillStyle = CROP_BG; og.fillRect(0,0,OUT,OUT);
+  og.drawImage(crop.img, crop.ox*k, crop.oy*k, crop.img.naturalWidth*sc, crop.img.naturalHeight*sc);
   let q = 0.86, data = out.toDataURL('image/jpeg', q);
   while(data.length > 120000 && q > 0.45){ q -= 0.08; data = out.toDataURL('image/jpeg', q); }
   const patch = { photoData: data };
