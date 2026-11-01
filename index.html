@@ -110,7 +110,10 @@ input:focus,select:focus,textarea:focus,button:focus-visible,.tab:focus-visible,
 .dot.cd{background:var(--honey)} .dot.cat{background:var(--clay)}
 @media (max-width:640px){ .day{min-height:52px;padding:4px} .evl{display:none} .dots{display:flex} }
 /* shopping */
-.check{width:24px;height:24px;flex:0 0 24px;border-radius:7px;border:2px solid var(--olive);background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--on-accent);padding:0}
+.shoprow{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.shoprow:active{background:var(--sunk)}
+button,.tab,label.btn{touch-action:manipulation}
+.check{width:28px;height:28px;flex:0 0 28px;transition:background .08s;border-radius:7px;border:2px solid var(--olive);background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--on-accent);padding:0}
 .check.on{background:var(--olive)}
 .done .grow{text-decoration:line-through;color:var(--muted)}
 .aisle{display:grid;gap:2px}
@@ -230,6 +233,23 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
 .captext{color:var(--ink)}
 .capform{margin-top:2px}
 .capform input{padding:7px 10px;font-size:14px}
+.exportbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px}
+.exportbar>div:first-child{min-width:0;flex:1 1 220px}
+.cathead-row{background:var(--sunk);border-radius:8px;padding:8px 10px!important;margin-top:6px;border-bottom:0!important}
+.jarrow{flex-wrap:wrap}
+.jaracts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.memgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr))}
+.memcard{background:var(--bg);border-radius:12px;overflow:hidden;display:grid;align-content:start}
+.memcover{aspect-ratio:4/3;width:100%;max-width:100%;border:0;padding:0;background:var(--sunk);cursor:pointer;position:relative;display:grid;place-items:center;color:var(--muted);font:inherit}
+.memcover img{width:100%;height:100%;object-fit:cover;display:block}
+.memcount{position:absolute;right:8px;bottom:8px;background:rgba(30,26,20,.65);color:#fff;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px}
+.membody{padding:10px 12px 12px;display:grid;gap:4px;min-width:0}
+.memnote{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.jar-inner{max-width:480px}
+.recphotos{display:flex;gap:8px;flex-wrap:wrap}
+.recph{position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;background:var(--sunk)}
+.recph img{width:100%;height:100%;object-fit:cover}
+.recph button{position:absolute;top:2px;right:2px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(30,26,20,.7);color:#fff;font-size:16px;line-height:1;cursor:pointer;padding:0}
 </style>
 </head>
 <body>
@@ -387,9 +407,19 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
     </div>
     <div class="card">
       <div class="card-head"><h3 id="spListTitle">Entries this month</h3>
-        <div class="seg small-seg" id="spFilter"><button type="button" data-f="all" aria-pressed="true">Both</button><button type="button" data-f="Kaylee">Kaylee</button><button type="button" data-f="Debby">Debby</button></div>
+        <div class="form-row" style="flex:0 1 auto;gap:6px">
+          <div class="seg small-seg" id="spSort"><button type="button" data-s="latest" aria-pressed="true">Latest first</button><button type="button" data-s="cat">By category</button></div>
+          <div class="seg small-seg" id="spFilter"><button type="button" data-f="all" aria-pressed="true">Both</button><button type="button" data-f="Kaylee">Kaylee</button><button type="button" data-f="Debby">Debby</button></div>
+        </div>
       </div>
       <ul class="list" id="spList"></ul>
+      <div class="exportbar">
+        <div><strong>Export to Excel</strong><div class="small muted">Every entry, line by line, grouped by category with subtotals. Opens in Excel or Google Sheets.</div></div>
+        <div class="form-row" style="flex:0 1 auto">
+          <select id="exScope" aria-label="What to export" style="flex:1 1 170px"><option value="month">This budget month</option><option value="year">The whole year</option></select>
+          <button class="btn" id="exBtn" type="button" style="flex:0 0 auto">Download Excel file</button>
+        </div>
+      </div>
     </div>
     <div class="card">
       <div class="card-head"><h2 id="yearTitle">Year at a glance</h2><span class="small muted">Expenses per budget month</span></div>
@@ -454,21 +484,21 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
       <div class="card">
         <div class="card-head"><h2>Date night jar</h2><span class="chip clay" id="jarCount"></span></div>
         <div id="drawArea"></div>
-        <div><button class="btn clay" id="drawBtn" type="button">Draw a date</button></div>
+        <div class="form-row" style="justify-content:flex-start"><button class="btn clay" id="drawBtn" type="button" style="flex:0 0 auto">Draw a date</button><button class="btn ghost" id="recordNew" type="button" style="flex:0 0 auto">Record a date we went on</button></div>
       </div>
       <form class="card" id="jarForm">
-        <h2>Add an idea</h2>
-        <input id="jarText" placeholder="e.g. Sunset picnic at Signal Hill" required maxlength="160">
+        <h2>Put a date in the jar</h2>
+        <input id="jarText" placeholder="e.g. Sunset picnic at Signal Hill" required maxlength="160" aria-label="Date idea">
         <div class="form-row">
           <select id="jarKind" aria-label="Kind of date"><option>At home</option><option>Going out</option><option>Free or cheap</option><option>Day trip</option></select>
-          <button class="btn" type="submit">Put it in the jar</button>
+          <label class="field" style="flex:1 1 150px"><span class="flbl">When (optional)</span><input type="date" id="jarWhen"></label>
         </div>
+        <p class="small muted" style="margin:0">Leave the date empty to keep it as a surprise idea for drawing later. With a date, it also goes on the calendar.</p>
+        <div><button class="btn" type="submit">Put it in the jar</button></div>
       </form>
     </div>
-    <div class="grid2">
-      <div class="card"><h3>In the jar</h3><ul class="list" id="jarList"></ul></div>
-      <div class="card"><h3>Dates we have done</h3><ul class="list" id="jarDone"></ul></div>
-    </div>
+    <div class="card"><div class="card-head"><h2>In the jar</h2><span class="small muted" id="jarHint"></span></div><ul class="list" id="jarList"></ul></div>
+    <div class="card"><div class="card-head"><h2>Our dates</h2><span class="small muted" id="memCount"></span></div><div class="memgrid" id="jarDone"></div></div>
   </section>
 
   <!-- NOTES -->
@@ -514,6 +544,25 @@ body::before{background:color-mix(in srgb,var(--bg) 72%,transparent)}
   <label class="field"><span class="flbl">Zoom</span><input type="range" id="cropZoom" min="0.35" max="5" step="0.01" value="1"></label>
   <div class="form-row" style="justify-content:flex-end"><button class="btn ghost" id="cropCancel" type="button" style="flex:0 0 auto">Cancel</button><button class="btn" id="cropSave" type="button" style="flex:0 0 auto">Save picture</button></div>
 </div></div>
+<div class="lightbox" id="jarBox" hidden><form class="lb-inner jar-inner" id="jarRecForm" role="dialog" aria-modal="true" aria-labelledby="jarRecTitle">
+  <h2 id="jarRecTitle">Record our date</h2>
+  <label class="field" id="jarRecNameWrap"><span class="flbl">What did you do?</span><input id="jarRecName" maxlength="160" placeholder="e.g. Dinner at Minari"></label>
+  <label class="field"><span class="flbl">Date</span><input type="date" id="jarRecDate" required></label>
+  <label class="field"><span class="flbl">How was it? (optional)</span><textarea id="jarRecNote" maxlength="600" placeholder="A few words to remember it by"></textarea></label>
+  <div class="field"><span class="flbl">Photos (up to 6)</span>
+    <div class="recphotos" id="jarRecPhotos"></div>
+    <label class="btn ghost small" style="justify-self:start">Add photos<input type="file" id="jarRecFile" accept="image/*" multiple></label>
+  </div>
+  <div class="small muted" id="jarRecStatus"></div>
+  <div class="form-row" style="justify-content:flex-end"><button class="btn ghost" id="jarRecCancel" type="button" style="flex:0 0 auto">Cancel</button><button class="btn" id="jarRecSave" type="submit" style="flex:0 0 auto">Save</button></div>
+</form></div>
+<div class="lightbox" id="jarPlanBox" hidden><form class="lb-inner jar-inner" id="jarPlanForm" role="dialog" aria-modal="true" aria-labelledby="jarPlanTitle">
+  <h2 id="jarPlanTitle">Plan this date</h2>
+  <p class="small muted" style="margin:0" id="jarPlanWhat"></p>
+  <label class="field"><span class="flbl">When</span><input type="date" id="jarPlanDate" required></label>
+  <label class="field"><span class="flbl">Time (optional)</span><input type="time" id="jarPlanTime"></label>
+  <div class="form-row" style="justify-content:flex-end"><button class="btn ghost" id="jarPlanClear" type="button" style="flex:0 0 auto" hidden>Remove the date</button><button class="btn ghost" id="jarPlanCancel" type="button" style="flex:0 0 auto">Cancel</button><button class="btn" type="submit" style="flex:0 0 auto">Save and add to calendar</button></div>
+</form></div>
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -730,8 +779,11 @@ const SHOPS = ['Woolworths','Pick n Pay','Checkers','Spar','Dis-Chem','Clicks','
 const ANY_SHOP = 'Any shop';
 let shopFilter = 'all';
 const shopOf = i => (i.place||'').trim() || ANY_SHOP;
+const shopPending = new Map(), shopInflight = new Map();
+const isDone = i => shopPending.has(i.id) ? shopPending.get(i.id) : !!i.done;
 function renderShopping(){
-  const items = [...S.shopping].sort((a,b)=>(a.done-b.done) || (a.at||0)-(b.at||0));
+  shopPending.forEach((v,id) => { if(shopInflight.has(id)) return; const it = S.shopping.find(x=>x.id===id); if(!it || !!it.done===v) shopPending.delete(id); });
+  const items = S.shopping.map(i => ({...i, done:isDone(i)})).sort((a,b)=>(a.done-b.done) || (a.at||0)-(b.at||0));
   const left = items.filter(i=>!i.done).length;
   $('#shopCount').textContent = `${left} to buy${items.length-left ? `, ${items.length-left} ticked` : ''}`;
   const used = [...new Set(items.map(shopOf))].sort((a,b)=> a===ANY_SHOP ? 1 : b===ANY_SHOP ? -1 : a.localeCompare(b));
@@ -743,7 +795,7 @@ function renderShopping(){
   f.innerHTML = [`<button type="button" data-shop="all" aria-pressed="${shopFilter==='all'}">All shops</button>`, ...used.map(x=>`<button type="button" data-shop="${esc(x)}" aria-pressed="${shopFilter===x}">${esc(x)} <span class="muted">${items.filter(i=>shopOf(i)===x && !i.done).length}</span></button>`)].join('');
   if(!items.length){ $('#shopList').innerHTML = '<div class="empty">The list is empty. Add items above, or send ingredients from the Meals tab.</div>'; return; }
   const groups = used.filter(x => shopFilter==='all' || x===shopFilter).map(x => [x, items.filter(i => shopOf(i)===x)]);
-  $('#shopList').innerHTML = groups.map(([x,list]) => `<div class="aisle"><h3>${esc(x)}</h3><ul class="list">${list.map(i => `<li class="${i.done?'done':''}"><button type="button" class="check ${i.done?'on':''}" data-tick="${esc(i.id)}" aria-pressed="${!!i.done}" aria-label="Tick ${esc(i.text)}">${i.done?'&#10003;':''}</button><span class="grow">${esc(i.text)}</span><span class="small muted">${i.by && i.by!==S.me ? esc(nameOf(i.by)) : ''}</span><button type="button" class="iconbtn" data-del-shop="${esc(i.id)}" aria-label="Remove ${esc(i.text)}">&times;</button></li>`).join('')}</ul></div>`).join('');
+  $('#shopList').innerHTML = groups.map(([x,list]) => `<div class="aisle"><h3>${esc(x)}</h3><ul class="list">${list.map(i => `<li class="shoprow ${i.done?'done':''}" data-tick="${esc(i.id)}"><button type="button" class="check ${i.done?'on':''}" aria-pressed="${!!i.done}" aria-label="Tick ${esc(i.text)}">${i.done?'&#10003;':''}</button><span class="grow">${esc(i.text)}</span><span class="small muted">${i.by && i.by!==S.me ? esc(nameOf(i.by)) : ''}</span><button type="button" class="iconbtn" data-del-shop="${esc(i.id)}" aria-label="Remove ${esc(i.text)}">&times;</button></li>`).join('')}</ul></div>`).join('');
 }
 $('#shopFilter').addEventListener('click', e => { const b=e.target.closest('[data-shop]'); if(b){ shopFilter=b.dataset.shop; renderShopping(); } });
 $('#shopForm').addEventListener('submit', async e => {
@@ -753,11 +805,22 @@ $('#shopForm').addEventListener('submit', async e => {
   if(await save(() => db.collection('shopping').add({text, place, done:false, by:S.me, at:Date.now()}))){ $('#shopText').value=''; $('#shopText').focus(); }
 });
 $('#shopList').addEventListener('click', e => {
-  const t=e.target.closest('[data-tick]'); if(t){ const it=S.shopping.find(i=>i.id===t.dataset.tick); if(it) save(()=>db.doc('shopping/'+it.id).update({done:!it.done})); return; }
-  const d=e.target.closest('[data-del-shop]'); if(d) save(()=>db.doc('shopping/'+d.dataset.delShop).delete());
+  const d=e.target.closest('[data-del-shop]'); if(d){ save(()=>db.doc('shopping/'+d.dataset.delShop).delete()); return; }
+  const t=e.target.closest('[data-tick]'); if(!t) return;
+  const it=S.shopping.find(i=>i.id===t.dataset.tick); if(!it) return;
+  const next = !isDone(it), id = it.id, token = (shopInflight.get(id)||0)+1;
+  shopPending.set(id, next); shopInflight.set(id, token);
+  const row = t; row.classList.toggle('done', next); const chk = row.querySelector('.check'); chk.classList.toggle('on', next); chk.setAttribute('aria-pressed', String(next)); chk.innerHTML = next ? '&#10003;' : '';
+  if(navigator.vibrate) try{ navigator.vibrate(8); }catch(_){}
+  clearTimeout(shopRerender); shopRerender = setTimeout(renderShopping, 900);
+  save(()=>db.doc('shopping/'+id).updateKnown(it, {done:next})).then(ok => {
+    if(shopInflight.get(id)===token) shopInflight.delete(id);
+    if(!ok){ shopPending.delete(id); renderShopping(); }
+  });
 });
+let shopRerender = null;
 $('#clearDone').onclick = async () => {
-  const done = S.shopping.filter(i=>i.done); if(!done.length){ toast('Nothing ticked yet.'); return; }
+  const done = S.shopping.filter(i=>isDone(i)); if(!done.length){ toast('Nothing ticked yet.'); return; }
   const batch = db.batch(); done.forEach(i => batch.delete(db.doc('shopping/'+i.id)));
   if(await save(()=>batch.commit())) toast(`Cleared ${done.length} item${done.length===1?'':'s'}`);
 };
@@ -837,7 +900,8 @@ function fillBudgetMonths(){
   for(let i=3;i>=-12;i--){ const d=new Date(t.getFullYear(), t.getMonth()+i, 1), k=ym(d); html += `<option value="${k}">${esc(monthLabel(k))}</option>`; }
   sel.innerHTML = html; sel.value = cur || ym(t);
 }
-let spFilter = 'all';
+let spFilter = 'all', spSort = 'latest';
+$('#spSort').addEventListener('click', e => { const b=e.target.closest('[data-s]'); if(!b) return; spSort=b.dataset.s; $$('#spSort [data-s]').forEach(x=>x.setAttribute('aria-pressed', String(x===b))); renderSpending(); });
 $('#spFilter').addEventListener('click', e => { const b=e.target.closest('[data-f]'); if(!b) return; spFilter=b.dataset.f; $$('#spFilter [data-f]').forEach(x=>x.setAttribute('aria-pressed', String(x===b))); renderSpending(); });
 function subSpend(){
   if(unsubs.spend) unsubs.spend();
@@ -868,7 +932,12 @@ function renderSpending(){
   }).join('') : '<div class="empty">Nothing logged for this budget month yet.</div>';
   $('#spListTitle').textContent = `Entries for ${monthLabel(month)}`;
   const list = inMonth.filter(s => spFilter==='all' || s.account===spFilter).sort((a,b)=>(b.at||0)-(a.at||0));
-  $('#spList').innerHTML = list.length ? list.map(s=>`<li><span class="chip">${esc(s.account||'')}</span><span class="grow">${esc(s.note||s.cat)} <span class="chip">${esc(s.cat)}</span>${s.date?` <span class="small muted">${esc(fmtShort(s.date))}</span>`:''}</span><span class="money">${money(s.amount)}</span><button type="button" class="iconbtn" data-del-sp="${esc(s.id)}" aria-label="Remove">&times;</button></li>`).join('') : '<li class="empty">No entries yet.</li>';
+  const spLi = s=>`<li><span class="chip">${esc(s.account||'')}</span><span class="grow">${esc(s.note||s.cat)} <span class="chip">${esc(s.cat)}</span>${s.date?` <span class="small muted">${esc(fmtShort(s.date))}</span>`:''}</span><span class="money">${money(s.amount)}</span><button type="button" class="iconbtn" data-del-sp="${esc(s.id)}" aria-label="Remove">&times;</button></li>`;
+  if(!list.length) $('#spList').innerHTML = '<li class="empty">No entries yet.</li>';
+  else if(spSort==='cat'){
+    const g = {}; list.forEach(x => (g[x.cat||'Other'] ||= []).push(x));
+    $('#spList').innerHTML = Object.keys(g).sort((a,b)=>g[b].reduce((t,x)=>t+x.amount,0)-g[a].reduce((t,x)=>t+x.amount,0)).map(c=>`<li class="cathead-row"><strong class="grow">${esc(c)}</strong><span class="small muted">${g[c].length} item${g[c].length===1?'':'s'}</span><strong class="money">${money(g[c].reduce((t,x)=>t+x.amount,0))}</strong></li>${g[c].map(spLi).join('')}`).join('');
+  } else $('#spList').innerHTML = list.map(spLi).join('');
   // year at a glance
   $('#yearTitle').textContent = `Year at a glance, ${yr}`;
   const grid = {}, colTot = Array(12).fill(0);
@@ -933,6 +1002,65 @@ document.addEventListener('click', async e => {
     const month = ym(ui.spMonth);
     if(await save(()=>db.doc('bills/'+b.id).update({paid:[...(b.paid||[]).filter(m=>m!==month), month].slice(-36)}))) toast(`${b.name} marked as paid`);
   }
+});
+
+/* ---------- Excel export ---------- */
+let xlsxLoading = null;
+function loadXlsx(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  return xlsxLoading ||= new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = () => res(window.XLSX); sc.onerror = () => { xlsxLoading = null; rej(new Error('load')); }; document.head.appendChild(sc); });
+}
+$('#exBtn').addEventListener('click', async () => {
+  const btn = $('#exBtn'), scope = $('#exScope').value, month = ym(ui.spMonth), yr = ui.spMonth.getFullYear();
+  const rowsIn = S.spend.filter(x => scope==='year' ? (x.month||'').startsWith(yr+'-') : x.month===month);
+  if(!rowsIn.length){ toast('There is nothing logged for that period yet.'); return; }
+  btn.disabled = true; btn.textContent = 'Preparing...';
+  try{
+    const X = await loadXlsx();
+    const R = '"R" #,##0.00', label = scope==='year' ? String(yr) : monthLabel(month);
+    const rand = c => Math.round(c)/100;
+    const dateOf = x => x.date ? parse(x.date) : '';
+    const sorted = [...rowsIn].sort((a,b)=> (a.month||'').localeCompare(b.month||'') || (a.date||'').localeCompare(b.date||'') || (a.at||0)-(b.at||0));
+    const catTotal = {}; sorted.forEach(x => catTotal[x.cat||'Other'] = (catTotal[x.cat||'Other']||0) + (x.amount||0));
+    const catOrder = Object.keys(catTotal).sort((a,b)=>catTotal[b]-catTotal[a]);
+    const grand = sorted.reduce((t,x)=>t+(x.amount||0),0);
+    const fmtCells = (ws, col, from, to, z) => { for(let r=from; r<=to; r++){ const c = ws[X.utils.encode_cell({r, c:col})]; if(c && typeof c.v==='number') c.z = z; } };
+    // Sheet 1: by category, every line with subtotals
+    const a1 = [[`Smit Household expenses: ${label}`], [], ['Category','Date logged','Budget month','Whose account','Notes','Amount']];
+    catOrder.forEach(c => {
+      sorted.filter(x=>(x.cat||'Other')===c).forEach(x => a1.push([c, dateOf(x), monthLabel(x.month), x.account||'', x.note||'', rand(x.amount)]));
+      a1.push([`Subtotal: ${c}`, '', '', '', `${sorted.filter(x=>(x.cat||'Other')===c).length} item(s)`, rand(catTotal[c])]); a1.push([]);
+    });
+    a1.push(['TOTAL', '', '', '', `${sorted.length} item(s)`, rand(grand)]);
+    const ws1 = X.utils.aoa_to_sheet(a1, { cellDates:true }); fmtCells(ws1, 5, 3, a1.length, R); fmtCells(ws1, 1, 3, a1.length, 'dd mmm yyyy');
+    ws1['!cols'] = [{wch:24},{wch:13},{wch:16},{wch:14},{wch:40},{wch:14}];
+    // Sheet 2: every entry in date order (good for filtering and pivot tables)
+    const a2 = [['Date logged','Budget month','Whose account','Category','Notes','Amount']];
+    sorted.forEach(x => a2.push([dateOf(x), monthLabel(x.month), x.account||'', x.cat||'Other', x.note||'', rand(x.amount)]));
+    const ws2 = X.utils.aoa_to_sheet(a2, { cellDates:true }); fmtCells(ws2, 5, 1, a2.length, R); fmtCells(ws2, 0, 1, a2.length, 'dd mmm yyyy');
+    ws2['!cols'] = [{wch:13},{wch:16},{wch:14},{wch:22},{wch:40},{wch:14}]; ws2['!autofilter'] = { ref: `A1:F${a2.length}` };
+    // Sheet 3: summary
+    let a3;
+    if(scope==='year'){
+      const months = [...new Set(sorted.map(x=>x.month))].sort();
+      a3 = [['Category', ...months.map(monthLabel), 'Total']];
+      catOrder.forEach(c => a3.push([c, ...months.map(m => rand(sorted.filter(x=>x.month===m && (x.cat||'Other')===c).reduce((t,x)=>t+x.amount,0))), rand(catTotal[c])]));
+      a3.push(['TOTAL', ...months.map(m => rand(sorted.filter(x=>x.month===m).reduce((t,x)=>t+x.amount,0))), rand(grand)]);
+    } else {
+      a3 = [['Category','Kaylee','Debby','Total','Monthly budget','Left']];
+      catOrder.forEach(c => { const k = sorted.filter(x=>(x.cat||'Other')===c && x.account==='Kaylee').reduce((t,x)=>t+x.amount,0), d = catTotal[c]-k, b = S.budgets[c]||0;
+        a3.push([c, rand(k), rand(d), rand(catTotal[c]), b?rand(b):'', b?rand(b-catTotal[c]):'']); });
+      const kt = sorted.filter(x=>x.account==='Kaylee').reduce((t,x)=>t+x.amount,0), bt = SPEND.reduce((t,c)=>t+(S.budgets[c]||0),0);
+      a3.push(['TOTAL', rand(kt), rand(grand-kt), rand(grand), bt?rand(bt):'', bt?rand(bt-grand):'']);
+    }
+    const ws3 = X.utils.aoa_to_sheet(a3); for(let col=1; col<a3[0].length; col++) fmtCells(ws3, col, 1, a3.length, R);
+    ws3['!cols'] = [{wch:24}, ...a3[0].slice(1).map(()=>({wch:15}))];
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws1, 'By category'); X.utils.book_append_sheet(wb, ws2, 'All entries'); X.utils.book_append_sheet(wb, ws3, 'Summary');
+    X.writeFile(wb, `Smit Household expenses ${scope==='year' ? yr : month}.xlsx`, { compression:true });
+    toast(`Excel file ready: ${sorted.length} entries`);
+  }catch(e){ console.warn(e); toast('The Excel file could not be made. Check your internet connection and try again.'); }
+  finally{ btn.disabled = false; btn.textContent = 'Download Excel file'; }
 });
 
 /* ---------- PHOTOS (stored in Firestore: small thumbnail + separate full image) ---------- */
@@ -1213,33 +1341,148 @@ $('#cropSave').addEventListener('click', async () => {
 });
 
 /* ---------- JAR ---------- */
+const jarPhotos = j => Array.isArray(j.photos) ? j.photos : [];
 function renderJar(){
-  const open = S.jar.filter(j=>!j.doneOn).sort((a,b)=>(a.at||0)-(b.at||0));
+  const open = S.jar.filter(j=>!j.doneOn).sort((a,b)=> (a.plannedDate?0:1)-(b.plannedDate?0:1) || (a.plannedDate||'').localeCompare(b.plannedDate||'') || (a.at||0)-(b.at||0));
   const done = S.jar.filter(j=>j.doneOn).sort((a,b)=>b.doneOn.localeCompare(a.doneOn));
-  $('#jarCount').textContent = `${open.length} idea${open.length===1?'':'s'} in the jar`;
+  const ideas = open.filter(j=>!j.plannedDate);
+  const plannedN = open.length - ideas.length;
+  $('#jarCount').textContent = `${ideas.length} idea${ideas.length===1?'':'s'} to draw${plannedN?`, ${plannedN} planned`:''}`;
   const d = ui.drawn && open.find(j=>j.id===ui.drawn);
   $('#drawArea').innerHTML = d
-    ? `<div class="drawn"><span class="chip clay">${esc(d.kind||'Date')}</span><div class="idea">${esc(d.text)}</div><div class="form-row" style="justify-content:center"><button class="btn" type="button" data-did="${esc(d.id)}">We did this</button></div></div>`
-    : `<div class="empty">${open.length ? 'Stuck for ideas? Draw one at random.' : 'The jar is empty. Add a few ideas first.'}</div>`;
-  $('#drawBtn').disabled = !open.length;
+    ? `<div class="drawn"><span class="chip clay">${esc(d.kind||'Date')}</span><div class="idea">${esc(d.text)}</div>${d.plannedDate?`<div class="small">Planned for ${esc(fmtLong(d.plannedDate))}</div>`:''}<div class="form-row" style="justify-content:center"><button class="btn ghost" type="button" data-plan="${esc(d.id)}" style="flex:0 0 auto">${d.plannedDate?'Change the date':'Pick a date'}</button><button class="btn" type="button" data-did="${esc(d.id)}" style="flex:0 0 auto">We did this</button></div></div>`
+    : `<div class="empty">${ideas.length ? 'Stuck for ideas? Draw one at random from the jar.' : 'The jar is empty. Put a few ideas in first.'}</div>`;
+  $('#drawBtn').disabled = !ideas.length;
   $('#drawBtn').textContent = d ? 'Draw again' : 'Draw a date';
-  $('#jarList').innerHTML = open.length ? open.map(j=>`<li><span class="grow">${esc(j.text)}</span><span class="chip">${esc(j.kind||'')}</span><button type="button" class="iconbtn" data-del-jar="${esc(j.id)}" aria-label="Remove ${esc(j.text)}">&times;</button></li>`).join('') : '<li class="empty">No ideas yet.</li>';
-  $('#jarDone').innerHTML = done.length ? done.map(j=>`<li><span class="chip">${esc(fmtShort(j.doneOn))}</span><span class="grow">${esc(j.text)}</span></li>`).join('') : '<li class="empty">Your first date from the jar will show here.</li>';
+  $('#jarHint').textContent = open.some(j=>j.plannedDate) ? 'Planned dates first, then ideas' : '';
+  $('#jarList').innerHTML = open.length ? open.map(j=>{
+    const when = j.plannedDate ? `<span class="chip ${j.plannedDate<TODAY?'danger':'olive'}">${esc(fmtWd(j.plannedDate))}${j.plannedTime?' '+esc(j.plannedTime):''}</span>` : '<span class="chip">Idea</span>';
+    return `<li class="jarrow"><span class="grow"><strong>${esc(j.text)}</strong><br><span class="small muted">${esc(j.kind||'')}${j.by && j.by!==S.me?` &middot; added by ${esc(nameOf(j.by))}`:''}</span></span>${when}<span class="jaracts"><button type="button" class="btn ghost small" data-plan="${esc(j.id)}">${j.plannedDate?'Change date':'Plan it'}</button><button type="button" class="btn small" data-did="${esc(j.id)}">We did this</button><button type="button" class="iconbtn" data-del-jar="${esc(j.id)}" aria-label="Remove ${esc(j.text)}">&times;</button></span></li>`;
+  }).join('') : '<li class="empty">No ideas in the jar yet.</li>';
+  $('#memCount').textContent = done.length ? `${done.length} date${done.length===1?'':'s'} so far` : '';
+  $('#jarDone').innerHTML = done.length ? done.map(j=>{
+    const ph = jarPhotos(j);
+    return `<article class="memcard"><button type="button" class="memcover" data-memopen="${esc(j.id)}" aria-label="Open ${esc(j.text)}">${ph.length?`<img src="${ph[0].thumb}" alt="">`:'<span class="memnoph">No photo yet</span>'}${ph.length>1?`<span class="memcount">${ph.length} photos</span>`:''}</button>
+      <div class="membody"><div class="small muted">${esc(fmtLong(j.doneOn))} ${esc(String(parse(j.doneOn).getFullYear()))}</div><strong>${esc(j.text)}</strong>${j.memory?`<div class="small memnote">${esc(j.memory)}</div>`:''}
+      <div><button type="button" class="btn ghost small" data-memedit="${esc(j.id)}">${ph.length?'Edit or add photos':'Add photos'}</button></div></div></article>`;
+  }).join('') : '<div class="empty">When you go on a date, tap We did this, or Record a date we went on, to save the date, photos and a note here.</div>';
 }
 $('#drawBtn').onclick = () => {
-  const open = S.jar.filter(j=>!j.doneOn && j.id!==ui.drawn);
-  const pool = open.length ? open : S.jar.filter(j=>!j.doneOn);
+  const ideas = S.jar.filter(j=>!j.doneOn && !j.plannedDate);
+  const pool = ideas.length > 1 ? ideas.filter(j=>j.id!==ui.drawn) : ideas;
   if(!pool.length) return;
   ui.drawn = pool[Math.floor(Math.random()*pool.length)].id; renderJar();
 };
+async function syncJarEvent(j, date, time){
+  const evId = j.eventId || ('jar-'+j.id);
+  if(date) await db.doc('events/'+evId).set({title:`Date night: ${j.text}`, date, time:time||'', who:'both', note:'From the date jar', jarId:j.id, by:S.me, at:Date.now()});
+  else if(j.eventId) await db.doc('events/'+evId).delete();
+  return date ? evId : '';
+}
 $('#jarForm').addEventListener('submit', async e => {
   e.preventDefault(); const text=$('#jarText').value.trim(); if(!text) return;
-  if(await save(()=>db.collection('jar').add({text, kind:$('#jarKind').value, by:S.me, at:Date.now()}))){ $('#jarText').value=''; toast('Into the jar'); }
+  const when = $('#jarWhen').value;
+  const ref = db.collection('jar').doc();
+  const data = {text, kind:$('#jarKind').value, by:S.me, at:Date.now()};
+  const ok = await save(async () => {
+    if(when){ data.plannedDate = when; data.eventId = await syncJarEvent({id:ref.id, text}, when, ''); }
+    await ref.set(data);
+  });
+  if(ok){ $('#jarText').value=''; $('#jarWhen').value=''; toast(when ? `Planned for ${fmtShort(when)} and added to the calendar` : 'Into the jar'); }
 });
+// plan a date
+let planFor = null;
+function openPlan(id){
+  const j = S.jar.find(x=>x.id===id); if(!j) return; planFor = id;
+  $('#jarPlanWhat').textContent = j.text; $('#jarPlanDate').value = j.plannedDate || ''; $('#jarPlanTime').value = j.plannedTime || '';
+  $('#jarPlanClear').hidden = !j.plannedDate; $('#jarPlanBox').hidden = false; $('#jarPlanDate').focus();
+}
+$('#jarPlanCancel').onclick = () => { $('#jarPlanBox').hidden = true; };
+$('#jarPlanForm').addEventListener('submit', async e => {
+  e.preventDefault(); const j = S.jar.find(x=>x.id===planFor); if(!j) return;
+  const date = $('#jarPlanDate').value, time = $('#jarPlanTime').value; if(!date) return;
+  const ok = await save(async () => { const eventId = await syncJarEvent(j, date, time); await db.doc('jar/'+j.id).update({plannedDate:date, plannedTime:time, eventId}); });
+  if(ok){ $('#jarPlanBox').hidden = true; toast(`Planned for ${fmtShort(date)} and added to the calendar`); }
+});
+$('#jarPlanClear').onclick = async () => {
+  const j = S.jar.find(x=>x.id===planFor); if(!j) return;
+  const ok = await save(async () => { await syncJarEvent(j, '', ''); await db.doc('jar/'+j.id).update({plannedDate:'', plannedTime:'', eventId:''}); });
+  if(ok){ $('#jarPlanBox').hidden = true; toast('The date was removed. It is back in the jar as an idea.'); }
+};
+// record a date (from the jar, or a new one) with photos
+const rec = { id:null, isNew:false, keep:[], add:[] };
+function recRenderPhotos(){
+  const all = [...rec.keep.map((p,i)=>({src:p.thumb, k:'keep', i})), ...rec.add.map((p,i)=>({src:p.thumb, k:'add', i}))];
+  $('#jarRecPhotos').innerHTML = all.length ? all.map(p=>`<span class="recph"><img src="${p.src}" alt=""><button type="button" data-recdel="${p.k}:${p.i}" aria-label="Remove this photo">&times;</button></span>`).join('') : '<span class="small muted">No photos added yet.</span>';
+}
+function openRecord(id){
+  const j = id && S.jar.find(x=>x.id===id);
+  Object.assign(rec, { id: j ? j.id : null, isNew: !j, keep: j ? jarPhotos(j).slice() : [], add: [] });
+  $('#jarRecTitle').textContent = j ? (j.doneOn ? 'Edit our date' : 'Record our date') : 'Record a date we went on';
+  $('#jarRecNameWrap').hidden = !!j; $('#jarRecName').required = !j; $('#jarRecName').value = '';
+  $('#jarRecDate').value = (j && (j.doneOn || (j.plannedDate && j.plannedDate<=TODAY ? j.plannedDate : ''))) || TODAY; $('#jarRecDate').max = TODAY;
+  $('#jarRecNote').value = (j && j.memory) || ''; $('#jarRecStatus').textContent = '';
+  recRenderPhotos(); $('#jarBox').hidden = false;
+}
+$('#recordNew').onclick = () => openRecord(null);
+$('#jarRecCancel').onclick = () => { $('#jarBox').hidden = true; };
+$('#jarRecPhotos').addEventListener('click', e => { const b=e.target.closest('[data-recdel]'); if(!b) return; const [k,i]=b.dataset.recdel.split(':'); rec[k].splice(+i,1); recRenderPhotos(); });
+$('#jarRecFile').addEventListener('change', async e => {
+  const files = [...(e.target.files||[])]; e.target.value='';
+  for(const f of files){
+    if(rec.keep.length + rec.add.length >= 6){ toast('Up to 6 photos per date.'); break; }
+    try{ const img = await loadImg(f); const thumb = toDataUrl(img, 360, 0.75, 60000); const full = await toJpegBlob(img, 1600, 0.84); if(thumb && full) rec.add.push({thumb, full}); }
+    catch(err){ toast('One of the files could not be opened as a photo.'); }
+  }
+  recRenderPhotos();
+});
+$('#jarRecForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const date = $('#jarRecDate').value; if(!date) return;
+  const name = $('#jarRecName').value.trim(); if(rec.isNew && !name){ $('#jarRecName').focus(); return; }
+  const btn = $('#jarRecSave'); btn.disabled = true;
+  const id = rec.id || db.collection('jar').doc().id;
+  try{
+    const uploaded = [];
+    for(let n=0; n<rec.add.length; n++){
+      $('#jarRecStatus').textContent = `Uploading photo ${n+1} of ${rec.add.length}...`;
+      const path = `jar/${id}/${Date.now()}-${n}.jpg`;
+      const up = await sb.storage.from('photos').upload(path, rec.add[n].full, {upsert:true, contentType:'image/jpeg', cacheControl:'3600'});
+      if(up.error) throw up.error;
+      uploaded.push({thumb:rec.add[n].thumb, full:path});
+    }
+    $('#jarRecStatus').textContent = 'Saving...';
+    const photos = [...rec.keep, ...uploaded], memory = $('#jarRecNote').value.trim();
+    const j = S.jar.find(x=>x.id===id);
+    const ok = await save(async () => {
+      if(j){
+        if(j.eventId && j.plannedDate && j.plannedDate!==date) await db.doc('events/'+j.eventId).update({date});
+        await db.doc('jar/'+id).update({doneOn:date, memory, photos});
+      } else await db.doc('jar/'+id).set({text:name, kind:'Going out', by:S.me, at:Date.now(), doneOn:date, memory, photos});
+    });
+    if(ok){ $('#jarBox').hidden = true; ui.drawn = null; toast(uploaded.length ? `Saved with ${photos.length} photo${photos.length===1?'':'s'}` : 'Saved to Our dates'); }
+  }catch(err){ console.warn(err); toast('The photos did not upload. Check your connection and try again.'); }
+  finally{ btn.disabled = false; $('#jarRecStatus').textContent = ''; }
+});
+async function openMemory(id){
+  const j = S.jar.find(x=>x.id===id); if(!j) return;
+  const ph = jarPhotos(j);
+  if(!ph.length){ openRecord(id); return; }
+  $('#lbTitle').textContent = `${j.text}, ${fmtLong(j.doneOn)} ${parse(j.doneOn).getFullYear()}`;
+  $('#lbPics').innerHTML = (j.memory?`<p class="memnote" style="grid-column:1/-1;margin:0">${esc(j.memory)}</p>`:'') + ph.map((p,i)=>`<figure><img id="mem-${i}" src="${p.thumb}" alt=""></figure>`).join('');
+  $('#lightbox').hidden = false; $('#lbClose').focus();
+  ph.forEach(async (p,i) => { if(!p.full) return; try{ const r = await sb.storage.from('photos').createSignedUrl(p.full, 3600); const el = document.getElementById('mem-'+i); if(r.data && r.data.signedUrl && el) el.src = r.data.signedUrl; }catch(_){} });
+}
 document.addEventListener('click', async e => {
-  const d=e.target.closest('[data-did]'); if(d){ if(await save(()=>db.doc('jar/'+d.dataset.did).update({doneOn:TODAY}))){ ui.drawn=null; toast('Lovely. Added to the dates you have done.'); } return; }
-  const x=e.target.closest('[data-del-jar]'); if(x) save(()=>db.doc('jar/'+x.dataset.delJar).delete());
+  const pl=e.target.closest('[data-plan]'); if(pl){ openPlan(pl.dataset.plan); return; }
+  const d=e.target.closest('[data-did]'); if(d){ openRecord(d.dataset.did); return; }
+  const me=e.target.closest('[data-memedit]'); if(me){ openRecord(me.dataset.memedit); return; }
+  const mo=e.target.closest('[data-memopen]'); if(mo){ openMemory(mo.dataset.memopen); return; }
+  const x=e.target.closest('[data-del-jar]');
+  if(x){ if(x.dataset.sure!=='1'){ x.dataset.sure='1'; x.textContent='Sure?'; x.classList.add('small'); return; }
+    const j = S.jar.find(q=>q.id===x.dataset.delJar); save(async()=>{ if(j && j.eventId) await db.doc('events/'+j.eventId).delete(); await db.doc('jar/'+x.dataset.delJar).delete(); }); }
 });
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ $('#jarBox').hidden = true; $('#jarPlanBox').hidden = true; } });
 
 /* ---------- NOTES ---------- */
 function renderNotes(){
@@ -1345,6 +1588,7 @@ function makeDb(sb, onChange){
       get: async () => snapDoc(id, await readOne(col, id)),
       set: async (d, opts) => { let data = clone(d); if(opts && opts.merge){ const cur = await readOne(col,id); if(cur) data = deepMerge(cur, data); } await write(col, id, data); hook(col,id,'set',data); },
       update: async d => { const cur = await readOne(col,id); if(!cur){ const e=new Error('Not found'); e.code='not-found'; throw e; } const merged = Object.assign(cur, clone(d)); await write(col, id, merged); hook(col,id,'update',merged,d); },
+      updateKnown: async (cur, d) => { const merged = Object.assign(clone(cur)||{}, clone(d)); delete merged.id; await write(col, id, merged); hook(col,id,'update',merged,d); },
       delete: async () => { const {error} = await sb.from('docs').delete().eq('collection',col).eq('id',id); if(error) throw fail(error); bump(col); hook(col,id,'delete',null); },
       onSnapshot(next, onError){ let alive=true; const run=()=>this.get().then(s=>alive&&next(s)).catch(e=>alive&&onError&&onError(e)); const un=watch(col, run); run(); return ()=>{ alive=false; un(); }; }
     };
@@ -1408,11 +1652,15 @@ function describe(col, items){
       if(added) out.push(`added a photo of the day${added.data.caption?`: "${trunc(added.data.caption,80)}"`:''}`);
       else if(capped && capped.data.caption) out.push(`added a caption to their photo: "${trunc(capped.data.caption,80)}"`);
       break; }
-    case 'events': if(sets.length) out.push(`added ${names(sets,'title')} to the calendar${sets.length===1&&sets[0].data.date?` (${fmtShort(sets[0].data.date)})`:''}`); if(dels.length) out.push(`removed ${dels.length===1?'a plan':dels.length+' plans'} from the calendar`); break;
+    case 'events': {
+      const evSets = sets.filter(x=>!x.data.jarId), evDels = dels.filter(x=>!String(x.id).startsWith('jar-'));
+      if(evSets.length) out.push(`added ${names(evSets,'title')} to the calendar${evSets.length===1&&evSets[0].data.date?` (${fmtShort(evSets[0].data.date)})`:''}`);
+      if(evDels.length) out.push(`removed ${evDels.length===1?'a plan':evDels.length+' plans'} from the calendar`);
+      break; }
     case 'countdowns': if(sets.length) out.push(`added a countdown: ${names(sets,'title')}`); if(dels.length) out.push('removed a countdown'); break;
     case 'shopping': {
       if(sets.length) out.push(`added ${names(sets,'text')} to the shopping list`);
-      const ticked = ups.filter(x=>x.data.done).length; if(ticked) out.push(`ticked off ${ticked} shopping item${ticked===1?'':'s'}`);
+      const last = {}; ups.forEach(x => last[x.id] = !!x.data.done); const ticked = Object.values(last).filter(Boolean).length; if(ticked) out.push(`ticked off ${ticked} shopping item${ticked===1?'':'s'}`);
       if(dels.length) out.push(`removed ${dels.length} item${dels.length===1?'':'s'} from the shopping list`);
       break; }
     case 'meals': out.push('updated the meal plan'); break;
@@ -1423,7 +1671,15 @@ function describe(col, items){
       break; }
     case 'bills': if(sets.length) out.push(`added a bill: ${names(sets,'name')}`); if(ups.length) out.push(`marked ${names(ups,'name')} as paid`); if(dels.length) out.push('removed a bill'); break;
     case 'cats': if(sets.length) out.push(`added ${names(sets,'name')} to The cats`); if(ups.length) out.push(`updated ${names(ups,'name')}'s details`); if(dels.length) out.push('removed a cat'); break;
-    case 'jar': if(sets.length) out.push(`put a date idea in the jar: ${names(sets,'text')}`); if(ups.some(x=>x.data.doneOn)) out.push('marked a date from the jar as done'); if(dels.length) out.push('removed a date idea'); break;
+    case 'jar': {
+      const newIdeas = sets.filter(x=>!x.data.doneOn), newDone = sets.filter(x=>x.data.doneOn);
+      if(newIdeas.length) out.push(`put a date in the jar: ${names(newIdeas,'text')}${newIdeas.length===1&&newIdeas[0].data.plannedDate?` (${fmtShort(newIdeas[0].data.plannedDate)})`:''}`);
+      if(newDone.length) out.push(`recorded a date: ${names(newDone,'text')}${jarPhotos(newDone[0].data).length?` with ${jarPhotos(newDone[0].data).length} photo(s)`:''}`);
+      const planned = ups.filter(x=>x.patch && x.patch.plannedDate), recorded = ups.filter(x=>x.patch && 'doneOn' in x.patch);
+      if(planned.length) out.push(`planned ${names(planned,'text')} for ${fmtShort(planned[0].data.plannedDate)}`);
+      if(recorded.length) out.push(`saved our date: ${names(recorded,'text')}${jarPhotos(recorded[0].data).length?` with ${jarPhotos(recorded[0].data).length} photo(s)`:''}`);
+      if(dels.length) out.push('removed a date idea');
+      break; }
     case 'contacts': if(sets.length) out.push(`added a contact: ${names(sets,'name')}`); if(dels.length) out.push('removed a contact'); break;
     case 'board': if(items.some(x=>x.id==='notes')) out.push('updated the shared notes'); if(items.some(x=>x.id==='budgets')) out.push('updated the monthly budgets'); break;
     default: out.push('made a change');
