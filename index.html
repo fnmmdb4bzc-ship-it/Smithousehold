@@ -932,7 +932,7 @@ function renderSpending(){
   }).join('') : '<div class="empty">Nothing logged for this budget month yet.</div>';
   $('#spListTitle').textContent = `Entries for ${monthLabel(month)}`;
   const list = inMonth.filter(s => spFilter==='all' || s.account===spFilter).sort((a,b)=>(b.at||0)-(a.at||0));
-  const spLi = s=>`<li><span class="chip">${esc(s.account||'')}</span><span class="grow">${esc(s.note||s.cat)} <span class="chip">${esc(s.cat)}</span>${s.date?` <span class="small muted">${esc(fmtShort(s.date))}</span>`:''}</span><span class="money">${money(s.amount)}</span><button type="button" class="iconbtn" data-del-sp="${esc(s.id)}" aria-label="Remove">&times;</button></li>`;
+  const spLi = s=>`<li><span class="chip">${esc(s.account||'')}</span><span class="grow">${esc(s.note||s.cat)} <span class="chip">${esc(s.cat)}</span></span><span class="money">${money(s.amount)}</span><button type="button" class="iconbtn" data-del-sp="${esc(s.id)}" aria-label="Remove">&times;</button></li>`;
   if(!list.length) $('#spList').innerHTML = '<li class="empty">No entries yet.</li>';
   else if(spSort==='cat'){
     const g = {}; list.forEach(x => (g[x.cat||'Other'] ||= []).push(x));
@@ -972,7 +972,7 @@ $('#spForm').addEventListener('submit', async e => {
   const amount = parseAmount($('#spAmount').value), month = $('#spBudgetMonth').value;
   if(!(amount>0)){ toast('Enter the amount, for example 162,36'); $('#spAmount').focus(); return; }
   if(!chosenAcct){ toast('Choose whose bank account it came from.'); return; }
-  const data = {account:chosenAcct, month, cat:$('#spCat').value, amount, note:$('#spNote').value.trim(), date:TODAY, by:S.me, at:Date.now()};
+  const data = {account:chosenAcct, month, cat:$('#spCat').value, amount, note:$('#spNote').value.trim(), by:S.me, at:Date.now()};
   if(await save(()=>db.collection('spending').add(data))){
     $('#spAmount').value=''; $('#spNote').value='';
     toast(`Logged ${money(amount)} to ${monthLabel(month)}`);
@@ -1019,26 +1019,25 @@ $('#exBtn').addEventListener('click', async () => {
     const X = await loadXlsx();
     const R = '"R" #,##0.00', label = scope==='year' ? String(yr) : monthLabel(month);
     const rand = c => Math.round(c)/100;
-    const dateOf = x => x.date ? parse(x.date) : '';
-    const sorted = [...rowsIn].sort((a,b)=> (a.month||'').localeCompare(b.month||'') || (a.date||'').localeCompare(b.date||'') || (a.at||0)-(b.at||0));
+    const sorted = [...rowsIn].sort((a,b)=> (a.month||'').localeCompare(b.month||'') || (a.at||0)-(b.at||0));
     const catTotal = {}; sorted.forEach(x => catTotal[x.cat||'Other'] = (catTotal[x.cat||'Other']||0) + (x.amount||0));
     const catOrder = Object.keys(catTotal).sort((a,b)=>catTotal[b]-catTotal[a]);
     const grand = sorted.reduce((t,x)=>t+(x.amount||0),0);
     const fmtCells = (ws, col, from, to, z) => { for(let r=from; r<=to; r++){ const c = ws[X.utils.encode_cell({r, c:col})]; if(c && typeof c.v==='number') c.z = z; } };
     // Sheet 1: by category, every line with subtotals
-    const a1 = [[`Smit Household expenses: ${label}`], [], ['Category','Date logged','Budget month','Whose account','Notes','Amount']];
+    const a1 = [[`Smit Household expenses: ${label}`], [], ['Category','Budget month','Whose account','Notes','Amount']];
     catOrder.forEach(c => {
-      sorted.filter(x=>(x.cat||'Other')===c).forEach(x => a1.push([c, dateOf(x), monthLabel(x.month), x.account||'', x.note||'', rand(x.amount)]));
-      a1.push([`Subtotal: ${c}`, '', '', '', `${sorted.filter(x=>(x.cat||'Other')===c).length} item(s)`, rand(catTotal[c])]); a1.push([]);
+      sorted.filter(x=>(x.cat||'Other')===c).forEach(x => a1.push([c, monthLabel(x.month), x.account||'', x.note||'', rand(x.amount)]));
+      a1.push([`Subtotal: ${c}`, '', '', `${sorted.filter(x=>(x.cat||'Other')===c).length} item(s)`, rand(catTotal[c])]); a1.push([]);
     });
-    a1.push(['TOTAL', '', '', '', `${sorted.length} item(s)`, rand(grand)]);
-    const ws1 = X.utils.aoa_to_sheet(a1, { cellDates:true }); fmtCells(ws1, 5, 3, a1.length, R); fmtCells(ws1, 1, 3, a1.length, 'dd mmm yyyy');
-    ws1['!cols'] = [{wch:24},{wch:13},{wch:16},{wch:14},{wch:40},{wch:14}];
-    // Sheet 2: every entry in date order (good for filtering and pivot tables)
-    const a2 = [['Date logged','Budget month','Whose account','Category','Notes','Amount']];
-    sorted.forEach(x => a2.push([dateOf(x), monthLabel(x.month), x.account||'', x.cat||'Other', x.note||'', rand(x.amount)]));
-    const ws2 = X.utils.aoa_to_sheet(a2, { cellDates:true }); fmtCells(ws2, 5, 1, a2.length, R); fmtCells(ws2, 0, 1, a2.length, 'dd mmm yyyy');
-    ws2['!cols'] = [{wch:13},{wch:16},{wch:14},{wch:22},{wch:40},{wch:14}]; ws2['!autofilter'] = { ref: `A1:F${a2.length}` };
+    a1.push(['TOTAL', '', '', `${sorted.length} item(s)`, rand(grand)]);
+    const ws1 = X.utils.aoa_to_sheet(a1); fmtCells(ws1, 4, 3, a1.length, R);
+    ws1['!cols'] = [{wch:24},{wch:16},{wch:14},{wch:40},{wch:14}];
+    // Sheet 2: every entry by budget month, in the order logged (good for filtering and pivot tables)
+    const a2 = [['Budget month','Whose account','Category','Notes','Amount']];
+    sorted.forEach(x => a2.push([monthLabel(x.month), x.account||'', x.cat||'Other', x.note||'', rand(x.amount)]));
+    const ws2 = X.utils.aoa_to_sheet(a2); fmtCells(ws2, 4, 1, a2.length, R);
+    ws2['!cols'] = [{wch:16},{wch:14},{wch:22},{wch:40},{wch:14}]; ws2['!autofilter'] = { ref: `A1:E${a2.length}` };
     // Sheet 3: summary
     let a3;
     if(scope==='year'){
